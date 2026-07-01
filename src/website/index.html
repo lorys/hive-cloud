@@ -77,6 +77,21 @@
 
         #confirmation h1:not(:first-of-type) { margin-top: 10px; }
 
+        #confirmation h2 {
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #confirmation h2 input[type=number] {
+            padding: 5px;
+            border: none;
+            text-align: center;
+            margin: 0 15px 0px 15px;
+            font-size: 20px;
+        }
+
         #confirmation p { color: var(--muted); line-height: 1.6; }
 
         #confirmation a {
@@ -270,10 +285,16 @@
             <p>Hive cloud is an open source, decentralized cloud storage.</p>
             <h1>How does Hive Cloud work ?</h1>
             <p>Hive cloud lives in each browser connected to a hive cloud server. Each browser stores a specific amount of chunks.</p>
-            <p>You can configure how many chunks you allow the Hive to use. 1 chunk = 128 bytes.</p>
+            <p>You can configure how many chunks you allow the Hive to use. 1 chunk = <span id="chunkSize"></span> bytes.</p>
             <a href="/about">Learn more</a>
-            <button>I allow Hive Cloud to use my browser</button>
+            <h2>I allow <input type="number" id="allowedChunks" value="1024" min="10" /> chunks</h2>
+            <button id="agreed">I allow Hive Cloud to use my browser</button>
         </div>
     </div>
+    <script>
+        document.querySelector("#agreed").onclick = start;
+        document.querySelector("#allowedChunks").value = 100;
+        document.querySelector("#chunkSize").innerHTML = chunk_size;
+    </script>
 </body>
 </html>
