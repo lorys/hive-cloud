@@ -63,25 +63,29 @@ Each client asks regularly if each of it's chunks are stored in X-1 other client
 
 ⚠️ Please, Don't send personal data. It's broadcasted to everyone !
 
-## Chunk's format
+## Chunk's format during transfers
 
-A chunk is set to a maximum of 1 048 576 bytes (or 1MiB) of *raw* binary data.
+A chunk is 1 048 576 bytes (or 1MiB). Full or not, it will always be the same size.
 
-But the way we process it requires 24 bytes more.
+But we can only process it completely if we have the 31 bytes of informations needed.
 
-Here are the different data required to process a chunk (in order) :
+Here are the different data required to process a chunk :
 
-- **16 bytes** : file's entire hash, used as an index
+- **16 bytes** : file's entire hash, used as an index and/or name
 - **2 bytes** : current chunk's index.
 - **2 bytes** : total chunks for this file
-- **6 bytes** : upload time (unix timestamp)
-- **1 048 576 bytes** : the entier chunk (filled with zeros if the chunk is smaller than the required size).
+- **5 bytes** : total bytes in this file 👈 Only present in the last chunk
+- **6 bytes** : chunk's upload time (unix timestamp)
+- **1 048 576 bytes** : the entier chunk (filled with zeros if the chunk is smaller than the set size).
 
 These data allow us to follow a file and know what part is missing.
 
 A file can have 65 535 chunks so a single file cannot exceed **~65 gigabytes**.
 
-A chunk has a lifetime of 30 days, when we come near this limit, the client should reupload the file (automatically if possible).
+A chunk has a lifetime of 30 days, when we come near this limit, the client should reupload the chunk (automatically if possible).
+
+This exact format, explained above, is used only during transfers between servers and clients.
+Clients have a slightly different approach when it comes to storing chunks.
 
 ## Communication client <> server
 
@@ -92,8 +96,8 @@ A chunk has a lifetime of 30 days, when we come near this limit, the client shou
 - `0x00` : Do we have a chunk ? If so, send it
 - `0x01` : Do we have a chunk ? yes or *no*
 - `0x02` : Can we store a chunk ? 
-- `0x03` : How many chunks do we have ?
-- `0x04` : How many chunks can we have ?
+- `0x03` : How many chunks do you have ?
+- `0x04` : How many chunks can you have ?
 
 Any questions asked from the server to a client will follow this format :
 ```
@@ -149,4 +153,10 @@ Any answer sent from server to the client will follow this format :
 
 - `0x37` : How many clients stores this chunk `<id>` ?
 - `0x38` : Can we store a file of `N` bytes named `<hash>` ?
-- `0x49` : Sending chunk `<hash>`
+
+#### Client's actions
+
+- `0x49` : store this chunk `<hash>`. The request is in this format :
+```
+| 0x49 | chunk 1MiB |
+```
