@@ -1,3 +1,5 @@
+import { tmpHiveInformations } from "../informations";
+
 export const answersCodes = {
     have_chunk_and_send: 0x00,
     have_chunk: 0x01,
@@ -23,9 +25,11 @@ export const clientAnswersHandlers = {
         
     },
     async [answersCodes.stored_chunks](buffer: Uint8Array) {
-        
+        const answer = (buffer[1]! << 16) + (buffer[2]! << 8) + buffer[3]!;
+        tmpHiveInformations.totalUsedCapacity += answer;
     },
     async [answersCodes.available_storage](buffer: Uint8Array) {
-        
+        const answer = (buffer[1]! << 16) + (buffer[2]! << 8) + buffer[3]!;
+        tmpHiveInformations.totalStorageCapacity += answer;
     }
 };

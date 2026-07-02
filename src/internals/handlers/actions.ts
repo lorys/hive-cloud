@@ -4,7 +4,7 @@ export const actionsCodes = {
 
 const actionsSet = new Set(Object.values(actionsCodes));
 
-export function isActions(type: number) {
+export function isAction(type: number) {
     return (type & 0xF0) === 0x40 && actionsSet.has(type);
 }
 

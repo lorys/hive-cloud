@@ -5,6 +5,31 @@ const hive = {
 
 const chunk_size = 1_048_576;
 
+const enums = {
+    client: {
+        questions: {
+            total_clients_having_chunk: 0x37,
+            have_space_to_store_file: 0x38
+        },
+        actions: {
+
+        }
+    },
+    server: {
+        questions: {
+            have_chunk_and_send: 0x00,
+            have_chunk: 0x01,
+            can_store_chunk: 0x02,
+            used_space: 0x03,
+            total_capacity: 0x04
+        },
+        actions: {
+            store_chunk: 0x11
+        },
+        infos: 0x21
+    }
+}
+
 async function questionsFromServerHandler(payload, hive) {
     const type = payload[0];
     // the first byte contains the action code made from the server that we need to execute.
@@ -13,7 +38,7 @@ async function questionsFromServerHandler(payload, hive) {
 
     const actions = {
         // Do we have a chunk ? If so, send it
-        async 0(args) {
+        async [enums.server.questions.have_chunk_and_send](args) {
             const wantedChunkIndex = new DataView(args).getUint32(0, true);
             try {
                 const chunk = await hive.pullChunk(new DataView(args).getUint32(0, true));
@@ -28,7 +53,7 @@ async function questionsFromServerHandler(payload, hive) {
         },
         
         // Do we have a chunk ? yes or no
-        async 1(args) {
+        async [enums.server.questions.have_chunk](args) {
             const wantedChunkIndex = new DataView(args).getUint32(0, true);
             try {
                 const chunk = await hive.pullChunk(new DataView(args).getUint32(0, true));
@@ -43,17 +68,17 @@ async function questionsFromServerHandler(payload, hive) {
         },
         
         // Can we store a chunk ? 
-        2() {
+        [enums.server.questions.can_store_chunk]() {
             return hive.canStoreChunk;
         },
 
         // How many chunks do we have ?
-        3() {
+        [enums.server.questions.used_space]() {
             return hive.storage.used;
         },
 
         // How many chunks can we have ?
-        4() {
+        [enums.server.questions.total_capacity]() {
             return hive.storage.capacity - hive.storage.used;
         }
     };
@@ -63,6 +88,19 @@ async function questionsFromServerHandler(payload, hive) {
         await hive.answerHive(answer);
     } catch (e) {
     }
+}
+
+async function answersFromServerHandler(payload, hive) {
+    const type = payload[0];
+
+    if (![
+        enums.client.questions.total_clients_having_chunk,
+        enums.client.questions.have_space_to_store_file
+    ].includes(type)) {
+        return;
+    }
+
+    console.log("received answer from server", payload);
 }
 
 class HiveStorage {
@@ -143,7 +181,7 @@ class HiveCommunication {
 
         this.#ws.onmessage = (event) => {
             questionsFromServerHandler(event.data, this);
-            answersFromServerHandler();
+            answersFromServerHandler(event.data, this);
         };
 
         return new Promise((res, rej) => {

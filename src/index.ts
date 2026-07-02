@@ -1,7 +1,7 @@
 import Fastify from 'fastify'
 import { serveStaticFiles } from './serveStaticFiles';
 import { handleWebsockets } from './internals/websockets';
-import { broadcastHiveInformations } from './internals/informations';
+import { retrieveAndBroadcastHiveInformations } from './internals/informations';
 
 const fastify = Fastify({
   logger: true
@@ -15,6 +15,6 @@ fastify.listen({
   port: 3000
 }, (err) => {
   setInterval(() => {
-    broadcastHiveInformations(fastify);
+    retrieveAndBroadcastHiveInformations(fastify);
   }, 1000);
 });
