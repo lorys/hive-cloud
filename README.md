@@ -38,12 +38,12 @@ All devices are connected by **websockets** to the server and files are supposed
 
 ### The client
 
-The client-side is the most important part, here's what it does :
+The client does 2 things :
 
-- It receives/sends chunks
+- It receives/sends chunks and takes care of their redundancy
 - It allows to upload new chunks (files uploaded by users)
 
-We should ask the user before using his browser/device. Eventhough the user can specify how much he wants to give to the hive, we should always ask. It **will** heavily use his internet connection and he might pay fees.
+We should ask the user before using his browser/device. Eventhough the user can specify how much storage he wants to give to the hive, we should always ask. It **will** heavily use his internet connection and he might pay fees.
 
 ## File processing
 
@@ -62,7 +62,6 @@ Each client asks regularly if each of it's chunks are stored in X-1 other client
 > Each client should look after the safety of it's own data.
 
 ⚠️ Please, Don't send personal data. It's broadcasted to everyone !
-If you do, I hope you chose a really strong encryption + salt.
 
 ## Chunk's format
 
@@ -86,20 +85,20 @@ A chunk has a lifetime of 30 days, when we come near this limit, the client shou
 
 ## Communication client <> server
 
-### > Server's **questions** and **actions**
+### > Server's **questions**, **actions** and **informations**
 
-The server can ask a client different questions :
+#### The server can ask a client different **questions** :
 
-- `0x0` : Do we have a chunk ? If so, send it
-- `0x1` : Do we have a chunk ? yes or *no*
-- `0x2` : Can we store a chunk ? 
-- `0x3` : How many chunks do we have ?
-- `0x4` : How many chunks can we have ?
+- `0x00` : Do we have a chunk ? If so, send it
+- `0x01` : Do we have a chunk ? yes or *no*
+- `0x02` : Can we store a chunk ? 
+- `0x03` : How many chunks do we have ?
+- `0x04` : How many chunks can we have ?
 
 Any questions asked from the server to a client will follow this format :
 ```
 |   question's code  |          params         |
-|       1 byte       |      0 to 1MiB bytes    |
+|       1 byte       |      1 to 1MiB bytes    |
 ```
 
 Any answer sent from client to the server will follow this format :
@@ -111,9 +110,9 @@ Any answer sent from client to the server will follow this format :
 
 > 👉 The server only cares about positive answers. The clients should only send something when it's usefull.
 
-The server can also ask different actions :
+#### The server can also ask different **actions** :
 
-- `0x5` : Store this chunk.
+- `0x11` : Store this chunk.
 
 The server doesn't expect any answer from the client when asking for an action. It will know the state of a given chunk when it'll ask for it.
 
@@ -123,6 +122,10 @@ An action sent from the server can only follow this format :
 |    action's code   |        params      |
 |       1 byte       |      1MiB bytes    |
 ```
+
+#### The server communicates informations about Hive's current state
+
+- `0x21` : Current Hive state: total storage capacity, total used capacity, total clients connected
 
 ### > Client's **questions** and **actions**
 
@@ -147,9 +150,9 @@ Any answer sent from server to the client will follow this format :
 
 #### Storage-related
 
-- `0x5` : How many clients stores this chunk `<id>` ?
+- `0x37` : How many clients stores this chunk `<id>` ?
 
 #### User-related
 
-- `0x` : Can we send a file of `N` bytes named `<hash>` ?
-- `0x` : Sending chunk `<hash>`
+- `0x48` : Can we store a file of `N` bytes named `<hash>` ?
+- `0x49` : Sending chunk `<hash>`
