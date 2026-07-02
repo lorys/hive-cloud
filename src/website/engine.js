@@ -1,8 +1,11 @@
-let hive = null;
+const hive = {
+    communication: null,
+    storage: null
+};
 
 const chunk_size = 1_048_576;
 
-async function hiveActionsHandler(payload, hive) {
+async function questionsFromServerHandler(payload, hive) {
     const type = payload[0];
     // the first byte contains the action code made from the server that we need to execute.
 
@@ -62,7 +65,7 @@ async function hiveActionsHandler(payload, hive) {
     }
 }
 
-class Storage {
+class HiveStorage {
     #storage;
     #indexes;
     #lastIndex = -1;
@@ -76,7 +79,7 @@ class Storage {
     }
 
     static splitFileToChunks(file) {
-        const bytes = new Uint8Array(await file.arrayBuffer());
+        const bytes = new Uint8Array(await (file.arrayBuffer()));
         let chunks = new Array(file.length/chunk_size);
         for (let a = 0; a < (bytes.byteLength / chunk_size); a++) {
             chunks[a] = bytes.subarray(a * chunk_size, (a * chunk_size) + chunk_size);
@@ -112,23 +115,23 @@ class Storage {
     }
 
     async pullChunk(index) {
-        const index = this.#findIndex(index);
+        const indexFound = this.findIndex(index);
 
-        if (!index)
+        if (!indexFound)
             throw { error: 102, message: "Chunk not found" };
 
         return this.#storage.subarray(this.lastIndex * chunk_size, chunk_size);
     }
 }
 
-class Hive {
+class HiveCommunication {
     #ws;
     #config = { allowedChunks: 1024 };
     #storage;
+    #waitingForAnswer;
 
-    constructor(allowedChunks) {
+    constructor(storage) {
         this.#config.allowedChunks = allowedChunks;
-        this.#storage = new Storage(allowedChunks);
     }
 
     connect() {
@@ -137,19 +140,21 @@ class Hive {
         }
         this.#ws = new WebSocket("ws://"+window.location.host+"/hive");
         this.#ws.binaryType = "arraybuffer";
+
+        this.#ws.onmessage = (event) => {
+            questionsFromServerHandler(event.data, this);
+            answersFromServerHandler();
+        };
+
         return new Promise((res, rej) => {
             this.#ws.onopen = res;
             this.#ws.onerror = rej;
         });
     }
 
-    static async init(allowedChunks) {
-        const hive = new Hive(allowedChunks);
+    static async init(allowedChunks, storage) {
+        const hive = new HiveCommunication(allowedChunks, storage);
         await hive.connect();
-
-        this.ws.onmessage = (event) => {
-            hiveActionsHandler(event.data, this);
-        };
 
         return hive;
     }
@@ -161,10 +166,21 @@ class Hive {
     }
 
     async uploadFileToHive(file, callback) {
+        const answer = new Uint8Array(10);
+        answer[0] = 255;
+        answer[2] = 255;
+        answer[4] = 255;
+        answer[6] = 255;
+        answer[8] = 255;
+        this.#ws.send(answer);
     }
 
     async answerHive(payload) {
         this.#ws.send(payload);
+    }
+
+    async waitForAnswerTo(type) {
+
     }
 
     async isFilePresentInHive(firstChunkId) {
@@ -188,10 +204,14 @@ class Hive {
     }
 }
 
-async function start() {
+const start = async () => {
     document.querySelector('#confirmation').style.display='none';
     const allowedChunks = document.querySelector("#allowedChunks").value;
-    if (!hive) {
-        hive = await Hive.init(parseInt(allowedChunks));
+    if (!hive.storage && !hive.communication) {
+        hive.storage = new HiveStorage();
+        hive.communication = await HiveCommunication.init(parseInt(allowedChunks));
+        document.querySelector("#upload").onclick = () => {
+            hive.communication.uploadFileToHive();
+        };
     }
 }
