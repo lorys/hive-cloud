@@ -147,12 +147,6 @@ Any answer sent from server to the client will follow this format :
 |       1 byte       |   0 to 32 bytes    |
 ```
 
-
-#### Storage-related
-
 - `0x37` : How many clients stores this chunk `<id>` ?
-
-#### User-related
-
-- `0x48` : Can we store a file of `N` bytes named `<hash>` ?
+- `0x38` : Can we store a file of `N` bytes named `<hash>` ?
 - `0x49` : Sending chunk `<hash>`
