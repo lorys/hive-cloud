@@ -11,7 +11,7 @@ These are the only requirements to store a file in Hive Cloud.
 
 We don't always have some space left on our devices, but we do always have a little bit of RAM available.
 
-The goal of this project is to offer a completely **decentralized and free cloud** by using everyone's RAM.
+The goal of this project is to offer a completely **open source and free Cloud storage** by using everyone's RAM.
 
 It's a challenge both mathematically and technically :
 
