@@ -4,7 +4,7 @@
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <title>Hive Cloud, Your free and open source cloud storage</title>
-    <script src="/engine.js"></script>
+    <script defer src="/engine.js?v=__ENGINE_VERSION__"></script>
     <style>
         :root {
             --bg: #fff8ec;
@@ -487,7 +487,7 @@
         </div>
     </div>
 
-    <div id="upload_steps" class="modal" style="display: block;">
+    <div id="upload_steps" class="modal" style="display: none;">
         <div>
             <h1>Upload status</h1>
             <p>Your file is being uploaded to the Hive.</p>
@@ -516,10 +516,5 @@
         <p>You are solely responsible for what you upload. Use this tool <strong>legally</strong>, in compliance with all applicable laws, and entirely <strong>at your own risk and expense</strong>.</p>
     </footer>
 
-    <script>
-        document.querySelector("#agreed").onclick = start;
-        document.querySelector("#allowedChunks").value = 100;
-        document.querySelector("#copyButton").onclick = copyChunkId;
-    </script>
 </body>
 </html>
