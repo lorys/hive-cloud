@@ -248,13 +248,13 @@ class HiveCommunication {
         const infos = new Uint8Array(7);
         infos[0] = enums.client.infos;
 
-        infos[1] = hive.storage.used >> 16;
-        infos[2] = (hive.storage.used & 0x00FF00) >> 8;
-        infos[3] = (hive.storage.used & 0x0000FF);
+        infos[1] = this.storage.used >> 16;
+        infos[2] = (this.storage.used & 0x00FF00) >> 8;
+        infos[3] = (this.storage.used & 0x0000FF);
 
-        infos[4] = hive.storage.total >> 16;
-        infos[5] = (hive.storage.total & 0x00FF00) >> 8;
-        infos[6] = (hive.storage.total & 0x0000FF);
+        infos[4] = this.storage.total >> 16;
+        infos[5] = (this.storage.total & 0x00FF00) >> 8;
+        infos[6] = (this.storage.total & 0x0000FF);
         
         this.#ws.send(infos);
     }

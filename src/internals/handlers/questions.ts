@@ -1,3 +1,4 @@
+import { WebSocket } from '@fastify/websocket';
 import { categories, codes } from "../codes";
 
 const questionsSet = new Set(Object.values(codes.client.questions));
@@ -7,10 +8,10 @@ export function isQuestion(type: number) {
 }
 
 export const clientQuestionsHandlers = {
-    async [codes.client.questions.total_clients_having_chunk](buffer: Uint8Array) {
+    async [codes.client.questions.total_clients_having_chunk](buffer: Uint8Array, wsClient: WebSocket) {
 
     },
-    async [codes.client.questions.have_space_to_store_file](buffer: Uint8Array) {
+    async [codes.client.questions.have_space_to_store_file](buffer: Uint8Array, wsClient: WebSocket) {
 
     }
 };

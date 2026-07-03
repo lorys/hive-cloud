@@ -1,22 +1,23 @@
+import { codes } from "./codes";
+import { WebSocket } from '@fastify/websocket';
 import { clientActionsHandlers, isAction } from "./handlers/actions";
 import { clientAnswersHandlers, isAnswer } from "./handlers/answers";
 import { clientInfosHandlers, isInfos } from "./handlers/informations";
 import { clientQuestionsHandlers, isQuestion } from "./handlers/questions";
 
-export async function routeWs(buffer: Uint8Array) {
+export async function routeWs(buffer: Uint8Array, wsClient: WebSocket) {
 
     const type = buffer[0];
 
     if (type === undefined) return;
-
+    
     if (isQuestion(type)) {
-        await clientQuestionsHandlers[type]!(buffer);
+        await clientQuestionsHandlers[type]!(buffer, wsClient);
     } else if (isAction(type)) {
-        await clientActionsHandlers[type]!(buffer);
+        await clientActionsHandlers[type]!(buffer, wsClient);
     } else if (isAnswer(type)) {
-        console.log("Received answer", buffer);
-        await clientAnswersHandlers[type]!(buffer);
+        await clientAnswersHandlers[type]!(buffer, wsClient);
     } else if (isInfos(type)) {
-        await clientInfosHandlers[type]!(buffer);
+        await clientInfosHandlers[type]!(buffer, wsClient);
     }
 }

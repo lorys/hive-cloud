@@ -1,6 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { OPEN } from "ws";
 import { codes } from "./codes";
+import { WebSocket } from "@fastify/websocket";
 
 export const hiveInformations = {
     totalStorageCapacity: 0,
@@ -49,6 +50,11 @@ export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInsta
 
         client.send(payload);
     });
+
+    fastify.websocketServer.clients.forEach(client => {
+        (client as WebSocket).hive.sentInformations = false;
+    })
+
     console.log(`Broadcast duration : ${Date.now() - start} ms`);
 
 };
