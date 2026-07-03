@@ -15,6 +15,9 @@ export const hive: HiveState = {
     storage: null
 };
 
+// for debugging
+(window as any).hive = hive;
+
 const start = async () => {
     byId("confirmation").style.display = 'none';
     const allowedChunks = parseInt(byId<HTMLInputElement>("allowedChunks").value, 10);

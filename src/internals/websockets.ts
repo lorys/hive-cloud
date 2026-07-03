@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import websocket from '@fastify/websocket';
+import websocket, { WebSocket } from '@fastify/websocket';
 import { routeWs } from './router';
 
 export function handleWebsockets(fastify: FastifyInstance) {
@@ -13,7 +13,8 @@ export function handleWebsockets(fastify: FastifyInstance) {
         fastify.get('/hive', { websocket: true }, (socket) => {
 
             socket.hive = {
-                sentInformations: false
+                sentInformations: false,
+                hasChunks: new Set()
             };
 
             socket.on('message', async (buffer: Buffer, isBinary) => {
@@ -22,7 +23,7 @@ export function handleWebsockets(fastify: FastifyInstance) {
                     return;
                 }
 
-                await routeWs(buffer, socket);
+                await routeWs(buffer, socket, fastify.websocketServer.clients as Set<WebSocket>);
             });
         });
     });

@@ -3,7 +3,9 @@ import "ws";
 declare module "ws" {
   interface WebSocket {
     hive: {
-        sentInformations?: boolean
+        sentInformations?: boolean,
+        hasChunks?: Set
     }
   }
+  
 }

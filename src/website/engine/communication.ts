@@ -4,15 +4,12 @@ import { questionsFromServerHandler } from "./handlers/questions.js";
 import { HiveStorage } from "./storage.js";
 import { numberToUint8Array } from "./utils.js";
 
-interface PendingAnswer {
-    received: ((payload: Uint8Array) => void) | null;
-    type: number | null;
-}
+type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void) | null; };
 
 export class HiveCommunication {
     #ws: WebSocket | null = null;
     #storageInstance: HiveStorage;
-    #waitingForAnswer: PendingAnswer = { received: null, type: null };
+    #waitingForAnswer: PendingAnswer = {};
 
     constructor(storage: HiveStorage) {
         this.#storageInstance = storage;
@@ -32,12 +29,11 @@ export class HiveCommunication {
             questionsFromServerHandler(payload, this);
             informationsFromServerHandler(payload, this);
 
-            if (this.#waitingForAnswer.type === payload[0]) {
-                this.#waitingForAnswer.received?.(payload);
+            if (this.#waitingForAnswer[payload[0]]) {
+                this.#waitingForAnswer[payload[0]]?.(payload);
 
                 // reset waitingForAnswer
-                this.#waitingForAnswer.type = null;
-                this.#waitingForAnswer.received = null;
+                delete this.#waitingForAnswer[payload[0]];
             }
         };
 
@@ -77,10 +73,9 @@ export class HiveCommunication {
         this.#ws?.send(payload);
     }
 
-    async waitForAnswer(type: number): Promise<Uint8Array> {
+    waitForAnswer(type: number): Promise<Uint8Array> {
         return new Promise((resolve) => {
-            this.#waitingForAnswer.received = resolve;
-            this.#waitingForAnswer.type = type;
+            this.#waitingForAnswer[type] = resolve;
         });
     }
 
@@ -90,7 +85,7 @@ export class HiveCommunication {
         payload.set(numberToUint8Array(chunkId, 16), 1);
         this.#ws?.send(payload);
         const answer = await this.waitForAnswer(payload[0]);
-        console.log("Answer received !!!!!!", answer);
+        console.log("✅✅✅✅✅✅✅", answer);
     }
 
     async downloadFileFromHive(chunkId: number) {

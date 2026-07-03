@@ -8,10 +8,7 @@ export function isAction(type: number) {
 }
 
 export const clientActionsHandlers = {
-    async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, wsClient: WebSocket) {
-        await new Promise(res => setTimeout(res, 2000));
-        const answer = new Uint8Array(2);
-        answer[0] = enums.client.actions.broadcast_chunk;
-        wsClient.send(answer);
+    async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
+
     }
 };

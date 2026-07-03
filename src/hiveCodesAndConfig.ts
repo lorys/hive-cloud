@@ -4,7 +4,6 @@ export const enums = {
     client: {
         questions: {
             total_clients_having_chunk: 0x37,
-            have_space_to_store_file: 0x38
         },
         actions: {
             broadcast_chunk: 0x49
