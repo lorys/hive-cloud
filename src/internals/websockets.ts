@@ -3,7 +3,11 @@ import websocket from '@fastify/websocket';
 import { routeWs } from './router';
 
 export function handleWebsockets(fastify: FastifyInstance) {
-    fastify.register(websocket);
+    fastify.register(websocket, {
+        options: {
+            maxPayload: 1048608
+        } 
+    });
 
     fastify.register(async function (fastify) {
         fastify.get('/hive', { websocket: true }, (socket) => {

@@ -181,7 +181,7 @@ class HiveStorage {
 class HiveCommunication {
     #ws;
     #storageInstance;
-    #waitingForAnswer;
+    #waitingForAnswer = { received: null, type: null };
 
     constructor(storage) {
         this.#storageInstance = storage;
@@ -195,12 +195,15 @@ class HiveCommunication {
         this.#ws.binaryType = "arraybuffer";
 
         this.#ws.onmessage = (event) => {
-
             const payload = new Uint8Array(event.data);
             console.log("WS message", payload);
             questionsFromServerHandler(payload, this);
             answersFromServerHandler(payload, this);
             informationsFromServerHandler(payload, this);
+
+            if (this.#waitingForAnswer.type === payload[0]) {
+                this.#waitingForAnswer.received(payload);
+            }
         };
 
         return new Promise((res, rej) => {
@@ -223,13 +226,7 @@ class HiveCommunication {
     }
 
     async uploadFileToHive(file, callback) {
-        const answer = new Uint8Array(10);
-        answer[0] = 255;
-        answer[2] = 255;
-        answer[4] = 255;
-        answer[6] = 255;
-        answer[8] = 255;
-        this.#ws.send(answer);
+        const 
     }
 
     async answerHive(payload) {
@@ -237,8 +234,11 @@ class HiveCommunication {
         this.#ws.send(payload);
     }
 
-    async waitForAnswerTo(type) {
-
+    async waitForAnswer(type) {
+        return new Promise((resolve, rej) => {
+            this.#waitingForAnswer.received = resolve;
+            this.#waitingForAnswer.type = type;
+        });
     }
 
     async isFilePresentInHive(firstChunkId) {

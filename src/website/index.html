@@ -4,7 +4,7 @@
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <title>Hive Cloud, Your free and open source cloud storage</title>
-    <script src="/engine"></script>
+    <script src="/engine.js"></script>
     <style>
         :root {
             --bg: #fff8ec;
@@ -431,23 +431,23 @@
             <h1>What's Hive Cloud ?</h1>
             <p>Hive cloud is an open source cloud storage.</p>
             <h1>How does Hive Cloud work ?</h1>
-            <p>Hive cloud lives in each browser connected to a hive cloud server. Each browser stores a specific amount of chunks.</p>
-            <p>You can configure how many chunks you allow the Hive to use. 1 chunk = <span id="chunkSize"></span> bytes.</p>
-            <a href="/about">Learn more</a>
-            <h2>I allow <input style="width: 100px;" type="number" id="allowedChunks" value="1024" min="10" /> chunks</h2>
+            <p>You give some of your memory to the Hive and in exchange you can store files 😁</p>
+            <p>⚠️ Files distributed across the hive may become <strong>corrupted or permanently lost</strong> at any time. So never store anything you cannot afford to lose.</p>
+            <p>⚠️ You are solely responsible for what you upload. Use this tool <strong>legally</strong>, in compliance with all applicable laws, and entirely <strong>at your own risk and expense</strong>.</p>
+            <a href="https://github.com/lorys/hive-cloud#readme" target="_blank">Learn more</a>
+            <h2>I allow the Hive to use <input style="width: 100px;" type="number" id="allowedChunks" value="1024" min="10" /> MiB</h2>
             <button id="agreed">I allow Hive Cloud to use my browser</button>
         </div>
     </div>
 
     <footer>
-        <p>Files distributed across the hive may become <strong>corrupted or permanently lost</strong> at any time — never store anything you cannot afford to lose.</p>
+        <p>Files distributed across the hive may become <strong>corrupted or permanently lost</strong> at any time. So never store anything you cannot afford to lose.</p>
         <p>You are solely responsible for what you upload. Use this tool <strong>legally</strong>, in compliance with all applicable laws, and entirely <strong>at your own risk and expense</strong>.</p>
     </footer>
 
     <script>
         document.querySelector("#agreed").onclick = start;
         document.querySelector("#allowedChunks").value = 100;
-        document.querySelector("#chunkSize").innerHTML = chunk_size;
     </script>
 </body>
 </html>

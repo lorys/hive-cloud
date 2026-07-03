@@ -19,5 +19,5 @@ fastify.listen({
   }
   setInterval(() => {
     retrieveAndBroadcastHiveInformations(fastify);
-  }, 5000);
+  }, 1000);
 });
