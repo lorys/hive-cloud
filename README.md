@@ -1,8 +1,4 @@
-# Hive Cloud
-
-***Hive Cloud is an open source, decentralized cloud storage.***
-
----
+<img width="1517" height="633" alt="banner" src="https://github.com/user-attachments/assets/a23446a4-ffb4-48de-a4f2-e31d518ce206" />
 
 Hive Cloud is an idea that emerged from the consistent underuse of common hardware devices and the fact that we're all missing storage space.
 Everyone has a computer/phone and access to the web.
