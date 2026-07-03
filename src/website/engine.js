@@ -19,8 +19,7 @@ const enums = {
     server: {
         questions: {
             have_chunk_and_send: 0x00,
-            have_chunk: 0x01,
-            can_store_chunk: 0x02
+            have_chunk: 0x01
         },
         actions: {
             store_chunk: 0x11
@@ -34,7 +33,7 @@ async function questionsFromServerHandler(payload, hive) {
     // the first byte contains the action code made from the server that we need to execute.
 
     const params = payload.subarray(1);
-    console.log(`Question ${type} asked from server with`, params);
+    
     const actions = {
         // Do we have a chunk ? If so, send it
         async [enums.server.questions.have_chunk_and_send](args) {
@@ -65,20 +64,12 @@ async function questionsFromServerHandler(payload, hive) {
             }
             return null;
         },
-        
-        // Can we store a chunk ? 
-        [enums.server.questions.can_store_chunk]() {
-            const answer = new Uint8Array(1);
-            answer.set(hive.canStoreChunk ? 1 : 0, 0);
-            return answer;
-        }
     };
 
     if (!Object.keys(actions).includes(type.toString())) return;
 
     try {
         const answer = await actions[type](params.buffer);
-        console.log({ answerTo: type, answerLength: answer.length });
         const answerPayload = new Uint8Array(1 + answer.length);
         answerPayload[0] = type;
         answerPayload.set(answer, 1);
@@ -103,11 +94,26 @@ async function informationsFromServerHandler(payload, hive) {
     const type = payload[0];
     if (type !== enums.server.infos) return;
 
-    console.log("received hive infos", payload);
-
     const totalCapacity = new DataView(payload.buffer).getUint32(1, false);
+    let totalCapacityFormatted = totalCapacity * chunk_size;
+    if (totalCapacityFormatted >= 1000*1000*chunk_size) totalCapacityFormatted = (totalCapacityFormatted / (1000*1000*chunk_size)).toFixed(1) + " TiB";
+    else if (totalCapacityFormatted >= 1000*chunk_size) totalCapacityFormatted = (totalCapacityFormatted / (1000*chunk_size)).toFixed(1) + " GiB";
+    else if (totalCapacityFormatted >= chunk_size) totalCapacityFormatted = (totalCapacityFormatted / chunk_size) + " MiB";
 
-    document.querySelector("#available_storage").innerHTML=`${totalCapacity * chunk_size} bytes`;
+    const totalUsed = new DataView(payload.buffer).getUint32(5, false);
+    let totalUsedFormatted = totalUsed * chunk_size;
+    if (totalUsedFormatted >= 1000*1000*chunk_size) totalUsedFormatted = (totalUsedFormatted / (1000*1000*chunk_size)).toFixed(1) + " TiB";
+    else if (totalUsedFormatted >= 1000*chunk_size) totalUsedFormatted = (totalUsedFormatted / (1000*chunk_size)).toFixed(1) + " GiB";
+    else if (totalUsedFormatted >= chunk_size) totalUsedFormatted = (totalUsedFormatted / chunk_size) + " MiB";
+    
+    const totalClients = new DataView(payload.buffer).getUint32(9, false);
+
+    document.querySelector("#available_storage").innerHTML=totalCapacityFormatted;
+    document.querySelector("#used_storage").innerHTML=totalUsedFormatted;
+    document.querySelector("#connected_devices").innerHTML=totalClients;
+
+    document.querySelector("#used").style.width=(totalUsed*100/totalCapacity)+"%";
+    document.querySelector("#used").innerHTML=(totalUsed*100/totalCapacity)+"%";
 }
 
 class HiveStorage {
@@ -275,6 +281,12 @@ const start = async () => {
     document.querySelector('#confirmation').style.display='none';
     const allowedChunks = document.querySelector("#allowedChunks").value;
     if (!hive.storage && !hive.communication) {
+        let providedStorage = allowedChunks * chunk_size;
+        if (providedStorage >= 1000*1000*chunk_size) providedStorage = (providedStorage / (1000*1000*chunk_size)).toFixed(1) + " TiB";
+        else if (providedStorage >= 1000*chunk_size) providedStorage = (providedStorage / (1000*chunk_size)).toFixed(1) + " GiB";
+        else if (providedStorage >= chunk_size) providedStorage = (providedStorage / chunk_size) + " MiB";
+
+        document.querySelector("#provided_storage").innerHTML=providedStorage;
         hive.storage = new HiveStorage(parseInt(allowedChunks));
         hive.communication = await HiveCommunication.init(hive.storage);
         document.querySelector("#upload").onclick = () => {
