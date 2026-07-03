@@ -116,6 +116,96 @@ async function informationsFromServerHandler(payload, hive) {
     document.querySelector("#used").innerHTML=(totalUsed*100/totalCapacity)+"%";
 }
 
+async function encryptChunk(file, password) {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+    );
+    const key = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt"]
+    );
+
+    const plaintext = new Uint8Array(await file.arrayBuffer());
+    const ciphertext = new Uint8Array(
+        await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plaintext)
+    );
+
+    const packaged = new Uint8Array(salt.length + iv.length + ciphertext.length);
+    packaged.set(salt, 0);
+    packaged.set(iv, salt.length);
+    packaged.set(ciphertext, salt.length + iv.length);
+
+    return new File([packaged], file.name + ".enc", { type: "application/octet-stream" });
+}
+
+// Copies the uploaded file's URL (shown in the .copy tool) to the clipboard
+// and gives the user a short visual confirmation on the button.
+async function copyChunkId() {
+    const value = document.querySelector("#upload_steps .chunk-id").textContent.trim();
+    if (!value) return;
+
+    const button = document.querySelector("#copyButton");
+    const label = button.innerHTML;
+    try {
+        await navigator.clipboard.writeText(value);
+        button.innerHTML = "✅ Copied";
+    } catch (e) {
+        button.innerHTML = "❌ Failed";
+        console.log("Could not copy to clipboard", e);
+    }
+    setTimeout(() => { button.innerHTML = label; }, 1500);
+}
+
+async function handleFileUpload(file) {
+    const modal = document.querySelector("#encryption");
+    const passwordInput = modal.querySelector("#encryptionPassword");
+    const yesButton = modal.querySelector("#encryptYes");
+    const noButton = modal.querySelector("#encryptNo");
+
+    modal.querySelector("#encryptionFileName").textContent = file.name;
+    passwordInput.value = "";
+    modal.style.display = "block";
+    passwordInput.focus();
+
+    const fileToUpload = await new Promise((resolve) => {
+        const close = () => {
+            modal.style.display = "none";
+            yesButton.onclick = null;
+            noButton.onclick = null;
+        };
+
+        yesButton.onclick = async () => {
+            const password = passwordInput.value;
+            if (!password) {
+                passwordInput.focus();
+                return;
+            }
+            yesButton.innerHTML="Encryption ...";
+            const encrypted = await encryptFile(file, password);
+            yesButton.innerHTML="Encryption done ✅";
+            resolve(encrypted);
+            close();
+        };
+
+        noButton.onclick = () => {
+            close();
+            resolve(file);
+        };
+    });
+
+    await hive.communication.uploadFileToHive(fileToUpload);
+}
+
 class HiveStorage {
     #storage;
     #indexes;
@@ -132,7 +222,7 @@ class HiveStorage {
         this.indexes = new Uint32Array(size);
     }
 
-    static splitFileToChunks(file) {
+    static async splitFileToChunks(file) {
         const bytes = new Uint8Array(await (file.arrayBuffer()));
         let chunks = new Array(file.length/chunk_size);
         for (let a = 0; a < (bytes.byteLength / chunk_size); a++) {
@@ -226,7 +316,11 @@ class HiveCommunication {
     }
 
     async uploadFileToHive(file, callback) {
-        const 
+        if (!file) return;
+        const chunks = await HiveStorage.splitFileToChunks(file);
+        // TODO: broadcast each chunk across the hive.
+        console.log("Uploading file to hive:", file.name, chunks.length, "chunk(s)");
+        if (callback) callback(chunks);
     }
 
     async answerHive(payload) {
@@ -289,9 +383,30 @@ const start = async () => {
         document.querySelector("#provided_storage").innerHTML=providedStorage;
         hive.storage = new HiveStorage(parseInt(allowedChunks));
         hive.communication = await HiveCommunication.init(hive.storage);
-        document.querySelector("#upload").onclick = () => {
-            hive.communication.uploadFileToHive();
+        const uploadZone = document.querySelector("#upload");
+        uploadZone.onclick = () => {
+            const fileField = document.createElement("input");
+            fileField.type="file";
+            fileField.click();
+            fileField.onchange = ({ target }) => {
+                const file = target.files[0];
+                if (file) handleFileUpload(file);
+            }
         };
+
+        // Drag & drop: dropping a file opens the encryption modal.
+        ["dragenter", "dragover"].forEach((eventName) => {
+            uploadZone.addEventListener(eventName, (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+            });
+        });
+        uploadZone.addEventListener("drop", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const file = event.dataTransfer.files[0];
+            if (file) handleFileUpload(file);
+        });
 
         setInterval(() => {
             hive.communication.sendInfos();
