@@ -1,9 +1,8 @@
-import { enums } from "./config.js";
+import { enums } from "hiveCodes";
 import { informationsFromServerHandler } from "./handlers/informations.js";
 import { questionsFromServerHandler } from "./handlers/questions.js";
 import { HiveStorage } from "./storage.js";
 import { numberToUint8Array } from "./utils.js";
-
 
 interface PendingAnswer {
     received: ((payload: Uint8Array) => void) | null;
@@ -35,6 +34,10 @@ export class HiveCommunication {
 
             if (this.#waitingForAnswer.type === payload[0]) {
                 this.#waitingForAnswer.received?.(payload);
+
+                // reset waitingForAnswer
+                this.#waitingForAnswer.type = null;
+                this.#waitingForAnswer.received = null;
             }
         };
 

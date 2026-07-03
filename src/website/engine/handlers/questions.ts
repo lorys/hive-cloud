@@ -1,5 +1,5 @@
 import { HiveCommunication } from "../communication";
-import { enums, chunk_size } from "../config.js";
+import { enums, chunk_size } from "hiveCodes";
 
 type ChunkAction = (args: Uint8Array) => Promise<Uint8Array | null>;
 

@@ -5,12 +5,14 @@
     "moduleResolution": "bundler",
     "lib": ["es2022", "dom", "dom.iterable"],
     "types": [],
-
+    "paths": {
+      "hiveCodes": ["../../hiveCodesAndConfig.ts"]
+    },
     "noEmit": true,
     "isolatedModules": true,
     "skipLibCheck": true,
 
     "strict": true
   },
-  "include": ["."]
+  "include": [".", "../../hiveCodesAndConfig.ts"]
 }

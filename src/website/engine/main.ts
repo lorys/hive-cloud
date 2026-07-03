@@ -1,8 +1,19 @@
-import { hive, chunk_size } from "./config.js";
 import { HiveStorage } from "./storage.js";
 import { HiveCommunication } from "./communication.js";
 import { handleFileUpload, copyChunkId } from "./ui.js";
 import { byId } from "./utils.js";
+import { chunk_size } from "hiveCodes";
+
+export interface HiveState {
+    communication: HiveCommunication | null;
+    storage: HiveStorage | null;
+}
+
+// Shared client-side state, populated by start().
+export const hive: HiveState = {
+    communication: null,
+    storage: null
+};
 
 const start = async () => {
     byId("confirmation").style.display = 'none';

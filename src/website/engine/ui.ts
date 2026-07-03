@@ -1,4 +1,4 @@
-import { hive } from "./config.js";
+import { hive } from "./main.js";
 import { encryptChunk } from "./utils.js";
 
 export async function copyChunkId() {

@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { OPEN } from "ws";
-import { codes } from "./codes";
 import { WebSocket } from "@fastify/websocket";
+import { enums } from "hiveCodes";
 
 export const hiveInformations = {
     totalStorageCapacity: 0,
@@ -30,7 +30,7 @@ export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInsta
         if (client.readyState !== OPEN) return;
 
         const payload = new Uint8Array(13);
-        payload[0] = codes.server.infos;
+        payload[0] = enums.server.infos;
 
         payload[1] = hiveInformations.totalStorageCapacity >> 24;
         payload[2] = (hiveInformations.totalStorageCapacity & 0x00FF0000) >> 16;

@@ -1,4 +1,4 @@
-import { chunk_size } from "./config.js";
+import { chunk_size } from "hiveCodes";
 
 export class HiveStorage {
     #storage: Uint8Array;

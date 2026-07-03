@@ -1,4 +1,3 @@
-import { codes } from "./codes";
 import { WebSocket } from '@fastify/websocket';
 import { clientActionsHandlers, isAction } from "./handlers/actions";
 import { clientAnswersHandlers, isAnswer } from "./handlers/answers";

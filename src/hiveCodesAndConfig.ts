@@ -1,4 +1,6 @@
-export const codes = {
+export const chunk_size = 1_048_576;
+
+export const enums = {
     client: {
         questions: {
             total_clients_having_chunk: 0x37,

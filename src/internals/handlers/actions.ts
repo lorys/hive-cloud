@@ -1,14 +1,17 @@
 import { WebSocket } from '@fastify/websocket';
-import { categories, codes } from "../codes";
+import { categories, enums } from 'hiveCodes';
 
-const actionsSet = new Set(Object.values(codes.client.actions));
+const actionsSet = new Set(Object.values(enums.client.actions));
 
 export function isAction(type: number) {
     return (type & 0xF0) === categories.client.actions && actionsSet.has(type);
 }
 
 export const clientActionsHandlers = {
-    async [codes.client.actions.broadcast_chunk](buffer: Uint8Array, wsClient: WebSocket) {
-
+    async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, wsClient: WebSocket) {
+        await new Promise(res => setTimeout(res, 2000));
+        const answer = new Uint8Array(2);
+        answer[0] = enums.client.actions.broadcast_chunk;
+        wsClient.send(answer);
     }
 };

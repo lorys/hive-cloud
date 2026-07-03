@@ -1,13 +1,13 @@
 import { WebSocket } from '@fastify/websocket';
-import { codes } from "../codes";
 import { tmpHiveInformations } from "../informations";
+import { enums } from 'hiveCodes';
 
 export function isInfos(type: number) {
-    return type === codes.client.infos;
+    return type === enums.client.infos;
 }
 
 export const clientInfosHandlers = {
-    async [codes.client.infos](buffer: Uint8Array, wsClient: WebSocket) {
+    async [enums.client.infos](buffer: Uint8Array, wsClient: WebSocket) {
         if (wsClient.hive.sentInformations) return;
 
         const stored = (buffer[1]! << 16) + (buffer[2]! << 8) + buffer[3]!;

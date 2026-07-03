@@ -1,5 +1,5 @@
+import { chunk_size, enums } from "hiveCodes";
 import { HiveCommunication } from "../communication";
-import { chunk_size, enums } from "../config";
 import { byId } from "../utils";
 
 export async function informationsFromServerHandler(payload: Uint8Array, _hive: HiveCommunication) {
