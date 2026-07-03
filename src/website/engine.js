@@ -12,38 +12,37 @@ const enums = {
             have_space_to_store_file: 0x38
         },
         actions: {
-
-        }
+            broadcast_chunk: 0x49
+        },
+        infos: 0x51
     },
     server: {
         questions: {
             have_chunk_and_send: 0x00,
             have_chunk: 0x01,
-            can_store_chunk: 0x02,
-            used_space: 0x03,
-            total_capacity: 0x04
+            can_store_chunk: 0x02
         },
         actions: {
             store_chunk: 0x11
         },
         infos: 0x21
     }
-}
+};
 
 async function questionsFromServerHandler(payload, hive) {
     const type = payload[0];
     // the first byte contains the action code made from the server that we need to execute.
 
     const params = payload.subarray(1);
-
+    console.log(`Question ${type} asked from server with`, params);
     const actions = {
         // Do we have a chunk ? If so, send it
         async [enums.server.questions.have_chunk_and_send](args) {
-            const wantedChunkIndex = new DataView(args).getUint32(0, true);
+            const wantedChunkIndex = new DataView(args.buffer, 1, args.byteLength).getUint32(0, true);
             try {
-                const chunk = await hive.pullChunk(new DataView(args).getUint32(0, true));
+                const chunk = await hive.pullChunk(wantedChunkIndex);
                 const answer = new Uint8Array(4 + chunk_size);
-                answer.set(payload.subarray(0,3));
+                answer.set(args.subarray(0,3));
                 answer.set(chunk, 4);
                 return answer;
             } catch (e) {
@@ -54,11 +53,11 @@ async function questionsFromServerHandler(payload, hive) {
         
         // Do we have a chunk ? yes or no
         async [enums.server.questions.have_chunk](args) {
-            const wantedChunkIndex = new DataView(args).getUint32(0, true);
+            const wantedChunkIndex = new DataView(args.buffer, 1, args.byteLength).getUint32(0, true);
             try {
-                const chunk = await hive.pullChunk(new DataView(args).getUint32(0, true));
+                const chunk = await hive.pullChunk(wantedChunkIndex);
                 const answer = new Uint8Array(4 + chunk_size);
-                answer.set(payload.subarray(0,3));
+                answer.set(args.subarray(0,3));
                 answer.set(chunk, 4);
                 return answer;
             } catch (e) {
@@ -69,24 +68,23 @@ async function questionsFromServerHandler(payload, hive) {
         
         // Can we store a chunk ? 
         [enums.server.questions.can_store_chunk]() {
-            return hive.canStoreChunk;
-        },
-
-        // How many chunks do we have ?
-        [enums.server.questions.used_space]() {
-            return hive.storage.used;
-        },
-
-        // How many chunks can we have ?
-        [enums.server.questions.total_capacity]() {
-            return hive.storage.capacity - hive.storage.used;
+            const answer = new Uint8Array(1);
+            answer.set(hive.canStoreChunk ? 1 : 0, 0);
+            return answer;
         }
     };
 
+    if (!Object.keys(actions).includes(type.toString())) return;
+
     try {
-        const answer = await actions[type](params);
-        await hive.answerHive(answer);
+        const answer = await actions[type](params.buffer);
+        console.log({ answerTo: type, answerLength: answer.length });
+        const answerPayload = new Uint8Array(1 + answer.length);
+        answerPayload[0] = type;
+        answerPayload.set(answer, 1);
+        await hive.answerHive(answerPayload);
     } catch (e) {
+        console.log("Error while processing questions for type " + type, e);
     }
 }
 
@@ -99,17 +97,29 @@ async function answersFromServerHandler(payload, hive) {
     ].includes(type)) {
         return;
     }
+}
 
-    console.log("received answer from server", payload);
+async function informationsFromServerHandler(payload, hive) {
+    const type = payload[0];
+    if (type !== enums.server.infos) return;
+
+    console.log("received hive infos", payload);
+
+    const totalCapacity = new DataView(payload.buffer).getUint32(1, false);
+
+    document.querySelector("#available_storage").innerHTML=`${totalCapacity * chunk_size} bytes`;
 }
 
 class HiveStorage {
     #storage;
     #indexes;
-    #lastIndex = -1;
+    lastIndex = -1;
     maxCapacity;
 
     constructor(size) {
+        if (!size || typeof size !== 'number') {
+            throw "No size specified.";
+        }
         this.maxCapacity = size;
         this.storage = new Uint8Array(size * chunk_size);
         this.storage.fill(0);
@@ -164,12 +174,11 @@ class HiveStorage {
 
 class HiveCommunication {
     #ws;
-    #config = { allowedChunks: 1024 };
-    #storage;
+    #storageInstance;
     #waitingForAnswer;
 
     constructor(storage) {
-        this.#config.allowedChunks = allowedChunks;
+        this.#storageInstance = storage;
     }
 
     connect() {
@@ -180,8 +189,12 @@ class HiveCommunication {
         this.#ws.binaryType = "arraybuffer";
 
         this.#ws.onmessage = (event) => {
-            questionsFromServerHandler(event.data, this);
-            answersFromServerHandler(event.data, this);
+
+            const payload = new Uint8Array(event.data);
+            console.log("WS message", payload);
+            questionsFromServerHandler(payload, this);
+            answersFromServerHandler(payload, this);
+            informationsFromServerHandler(payload, this);
         };
 
         return new Promise((res, rej) => {
@@ -190,8 +203,8 @@ class HiveCommunication {
         });
     }
 
-    static async init(allowedChunks, storage) {
-        const hive = new HiveCommunication(allowedChunks, storage);
+    static async init(storage) {
+        const hive = new HiveCommunication(storage);
         await hive.connect();
 
         return hive;
@@ -214,6 +227,7 @@ class HiveCommunication {
     }
 
     async answerHive(payload) {
+        console.log("Answering server with", payload);
         this.#ws.send(payload);
     }
 
@@ -230,14 +244,29 @@ class HiveCommunication {
 
     }
 
+    async sendInfos() {
+        const infos = new Uint8Array(7);
+        infos[0] = enums.client.infos;
+
+        infos[1] = hive.storage.used >> 16;
+        infos[2] = (hive.storage.used & 0x00FF00) >> 8;
+        infos[3] = (hive.storage.used & 0x0000FF);
+
+        infos[4] = hive.storage.total >> 16;
+        infos[5] = (hive.storage.total & 0x00FF00) >> 8;
+        infos[6] = (hive.storage.total & 0x0000FF);
+        
+        this.#ws.send(infos);
+    }
+
     get canStoreChunk() {
-        return this.storage.lastIndex < this.storage.maxCapacity;
+        return this.storageInstance.lastIndex < this.storageInstance.maxCapacity;
     }
 
     get storage() {
         return {
-            used: this.storage.lastIndex,
-            total: this.storage.maxCapacity
+            used: this.#storageInstance.lastIndex < 0 ? 0 : this.#storageInstance.lastIndex,
+            total: this.#storageInstance.maxCapacity
         };
     }
 }
@@ -246,10 +275,14 @@ const start = async () => {
     document.querySelector('#confirmation').style.display='none';
     const allowedChunks = document.querySelector("#allowedChunks").value;
     if (!hive.storage && !hive.communication) {
-        hive.storage = new HiveStorage();
-        hive.communication = await HiveCommunication.init(parseInt(allowedChunks));
+        hive.storage = new HiveStorage(parseInt(allowedChunks));
+        hive.communication = await HiveCommunication.init(hive.storage);
         document.querySelector("#upload").onclick = () => {
             hive.communication.uploadFileToHive();
         };
+
+        setInterval(() => {
+            hive.communication.sendInfos();
+        }, 1000);
     }
 }
