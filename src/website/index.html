@@ -249,15 +249,51 @@
             cursor: pointer;
         }
 
-        /* ===== Confirmation overlay ===== */
-        #confirmation {
+        /* ===== Copy tool ===== */
+        .copy {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 10px 10px 18px;
+            border-radius: 16px;
+            border: 1px solid var(--stroke);
+            background: linear-gradient(165deg, #ffffff, #fff6e4);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 12px 24px -20px rgba(224, 124, 10, 0.5);
+        }
+
+        .copy .chunk-id {
+            flex: 1;
+            min-width: 0;
+            font-family: 'SF Mono', ui-monospace, monospace;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: var(--muted);
+            text-align: left;
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .copy button {
+            margin-top: 0;
+            flex-shrink: 0;
+            padding: 12px 16px;
+            font-size: 15px;
+        }
+
+        /* ===== Modal overlay (confirmation, encryption, …) ===== */
+        .modal {
             position: fixed;
             inset: 0;
             background: rgba(255, 248, 236, 0.55);
             backdrop-filter: blur(18px) saturate(120%);
         }
 
-        #confirmation div {
+        .modal > div {
             position: fixed;
             inset: 0;
             z-index: 100;
@@ -277,7 +313,7 @@
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
 
-        #confirmation h1 {
+        .modal h1 {
             font-size: clamp(22px, 3vw, 30px);
             background: linear-gradient(120deg, var(--honey-deep), var(--honey));
             -webkit-background-clip: text;
@@ -285,9 +321,9 @@
             -webkit-text-fill-color: transparent;
         }
 
-        #confirmation h1:not(:first-of-type) { margin-top: 10px; }
+        .modal h1:not(:first-of-type) { margin-top: 10px; }
 
-        #confirmation h2 {
+        .modal h2 {
             text-align: center;
             display: flex;
             justify-content: center;
@@ -295,7 +331,7 @@
             color: var(--text);
         }
 
-        #confirmation h2 input[type=number] {
+        .modal h2 input {
             padding: 8px;
             border: 1px solid var(--stroke);
             border-radius: 10px;
@@ -306,17 +342,17 @@
             background: var(--surface-2);
         }
 
-        #confirmation p { color: var(--muted); line-height: 1.6; }
+        .modal p { color: var(--muted); line-height: 1.6; }
 
-        #confirmation a {
+        .modal a {
             width: fit-content;
             color: var(--honey-deep);
             text-decoration: none;
             font-weight: 600;
         }
-        #confirmation a:hover { text-decoration: underline; }
+        .modal a:hover { text-decoration: underline; }
 
-        #confirmation button {
+        .modal button {
             margin-top: 12px;
             padding: 16px 22px;
             font-size: 16px;
@@ -332,14 +368,25 @@
                 inset 0 -4px 10px -4px rgba(224, 124, 10, 0.5);
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        #confirmation button:hover {
+        .modal button:hover {
             transform: translateY(-2px);
             box-shadow:
                 0 22px 40px -10px var(--glow),
                 inset 0 1px 0 rgba(255, 255, 255, 0.8),
                 inset 0 -4px 10px -4px rgba(224, 124, 10, 0.5);
         }
-        #confirmation button:active { transform: translateY(1px); }
+        .modal button:active { transform: translateY(1px); }
+
+        /* Secondary button (e.g. "upload without encryption") */
+        .modal button.secondary {
+            margin-top: 0;
+            color: var(--honey-deep);
+            background: linear-gradient(180deg, #ffffff, #fff2d6);
+            border: 1px solid var(--stroke);
+            box-shadow:
+                0 10px 20px -12px rgba(224, 124, 10, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
 
         /* ===== Footer ===== */
         footer {
@@ -426,7 +473,7 @@
         </div>
     </main>
 
-    <div id="confirmation">
+    <div id="confirmation" class="modal">
         <div>
             <h1>What's Hive Cloud ?</h1>
             <p>Hive cloud is an open source cloud storage.</p>
@@ -440,6 +487,30 @@
         </div>
     </div>
 
+    <div id="upload_steps" class="modal" style="display: block;">
+        <div>
+            <h1>Upload status</h1>
+            <p>Your file is being uploaded to the Hive.</p>
+            <div class="copy">
+                <h2 class="chunk-id">https://hive.fly.dev/file/we90we8fe</h2>
+                <button id="copyButton">📋 Copy</button>
+            </div>
+            <button id="encryptNo" class="secondary">close</button>
+        </div>
+    </div>
+
+    <div id="encryption" class="modal" style="display: none;">
+        <div>
+            <h1>Encrypt this file ?</h1>
+            <p>You're about to upload <strong id="encryptionFileName"></strong>.</p>
+            <p>You can encrypt it with a password before it's spread across the hive. Only someone who knows the password will be able to read it.</p>
+            <p>⚠️ If you lose the password, the file becomes <strong>permanently unrecoverable</strong>.</p>
+            <h2>Password <input style="width: 220px;" type="password" id="encryptionPassword" placeholder="Choose a password" /></h2>
+            <button id="encryptYes">🔒 Encrypt &amp; upload</button>
+            <button id="encryptNo" class="secondary">Upload without encryption</button>
+        </div>
+    </div>
+
     <footer>
         <p>Files distributed across the hive may become <strong>corrupted or permanently lost</strong> at any time. So never store anything you cannot afford to lose.</p>
         <p>You are solely responsible for what you upload. Use this tool <strong>legally</strong>, in compliance with all applicable laws, and entirely <strong>at your own risk and expense</strong>.</p>
@@ -448,6 +519,7 @@
     <script>
         document.querySelector("#agreed").onclick = start;
         document.querySelector("#allowedChunks").value = 100;
+        document.querySelector("#copyButton").onclick = copyChunkId;
     </script>
 </body>
 </html>
