@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { OPEN } from "ws";
+import { codes } from "./codes";
 
 export const hiveInformations = {
     totalStorageCapacity: 0,
@@ -15,22 +16,20 @@ export const tmpHiveInformations = {
 
 export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInstance) {
     const start = Date.now();
-    const askUsed = new Uint8Array([0x03]);
-    const askTotalCapacity = new Uint8Array([0x03]);
 
-    hiveInformations.totalConnectedClients = tmpHiveInformations.totalConnectedClients;
     hiveInformations.totalStorageCapacity = tmpHiveInformations.totalStorageCapacity;
     hiveInformations.totalUsedCapacity = tmpHiveInformations.totalUsedCapacity;
 
-    tmpHiveInformations.totalConnectedClients = 0;
     tmpHiveInformations.totalStorageCapacity = 0;
     tmpHiveInformations.totalUsedCapacity = 0;
+
+    const totalConnectedClients = fastify.websocketServer.clients.size;
 
     fastify.websocketServer.clients.forEach((client) => {
         if (client.readyState !== OPEN) return;
 
         const payload = new Uint8Array(13);
-        payload[0] = 5;
+        payload[0] = codes.server.infos;
 
         payload[1] = hiveInformations.totalStorageCapacity >> 24;
         payload[2] = (hiveInformations.totalStorageCapacity & 0x00FF0000) >> 16;
@@ -42,17 +41,13 @@ export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInsta
         payload[7] = (hiveInformations.totalUsedCapacity & 0x0000FF00) >> 8;
         payload[8] = hiveInformations.totalUsedCapacity & 0x000000FF;
 
-        payload[9] = hiveInformations.totalConnectedClients >> 24;
-        payload[10] = (hiveInformations.totalConnectedClients & 0x00FF0000) >> 16;
-        payload[11] = (hiveInformations.totalConnectedClients & 0x0000FF00) >> 8;
-        payload[12] = (hiveInformations.totalConnectedClients & 0x000000FF);
 
-         // sending hive's infos
+        payload[9] = totalConnectedClients >> 24;
+        payload[10] = (totalConnectedClients & 0x00FF0000) >> 16;
+        payload[11] = (totalConnectedClients & 0x0000FF00) >> 8;
+        payload[12] = (totalConnectedClients & 0x000000FF);
+
         client.send(payload);
-
-        // asking current state
-        client.send(askUsed);
-        client.send(askTotalCapacity);
     });
     console.log(`Broadcast duration : ${Date.now() - start} ms`);
 

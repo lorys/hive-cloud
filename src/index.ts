@@ -16,5 +16,5 @@ fastify.listen({
 }, (err) => {
   setInterval(() => {
     retrieveAndBroadcastHiveInformations(fastify);
-  }, 1000);
+  }, 5000);
 });

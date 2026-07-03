@@ -1,19 +1,16 @@
-export const questionsCodes = {
-    total_clients_storing_chunk: 0x37,
-    can_store_file: 0x38,
-}
+import { categories, codes } from "../codes";
 
-const questionsSet = new Set(Object.values(questionsCodes));
+const questionsSet = new Set(Object.values(codes.client.questions));
 
 export function isQuestion(type: number) {
-    return (type & 0xF0) === 0x30 && questionsSet.has(type);
+    return (type & 0xF0) === categories.client.questions && questionsSet.has(type);
 }
 
 export const clientQuestionsHandlers = {
-    async [questionsCodes.total_clients_storing_chunk](buffer: Uint8Array) {
+    async [codes.client.questions.total_clients_having_chunk](buffer: Uint8Array) {
 
     },
-    async [questionsCodes.can_store_file](buffer: Uint8Array) {
+    async [codes.client.questions.have_space_to_store_file](buffer: Uint8Array) {
 
     }
 };

@@ -1,15 +1,13 @@
-export const actionsCodes = {
-    sending_chunk: 0x49
-}
+import { categories, codes } from "../codes";
 
-const actionsSet = new Set(Object.values(actionsCodes));
+const actionsSet = new Set(Object.values(codes.client.actions));
 
 export function isAction(type: number) {
-    return (type & 0xF0) === 0x40 && actionsSet.has(type);
+    return (type & 0xF0) === categories.client.actions && actionsSet.has(type);
 }
 
 export const clientActionsHandlers = {
-    async [actionsCodes.sending_chunk](buffer: Uint8Array) {
+    async [codes.client.actions.broadcast_chunk](buffer: Uint8Array) {
 
     }
 };
