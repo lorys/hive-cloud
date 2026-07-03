@@ -21,8 +21,8 @@
 /build
 /dist
 
-/src/website/engine.js
-/src/website/engine.js.map
+src/website/engine.js
+src/website/engine.js.map
 
 # misc
 .DS_Store
