@@ -115,9 +115,9 @@ export class HiveCommunication {
     }
 
     async isFilePresentInHive(chunkId: number) {
-        const payload = new Uint8Array(17);
+        const payload = new Uint8Array(33);
         payload[0] = enums.client.questions.total_clients_having_chunk;
-        payload.set(numberToUint8Array(chunkId, 16), 1);
+        payload.set(numberToUint8Array(chunkId, 32), 1);
         this.#ws?.send(payload);
         const answer = await this.waitForAnswer(payload[0]);
         return uint8ArrayToNumber(answer);
