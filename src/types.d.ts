@@ -4,7 +4,9 @@ declare module "ws" {
   interface WebSocket {
     hive: {
         sentInformations?: boolean,
-        hasChunks?: Set
+        hasChunks?: Set,
+        totalStorage?: number,
+        usedStorage?: number
     }
   }
   

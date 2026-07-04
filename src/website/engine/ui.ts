@@ -60,5 +60,5 @@ export async function handleFileUpload(file: File) {
         };
     });
 
-    await hive.communication?.uploadFileToHive(fileToUpload);
+    await hive.communication?.uploadFileToHive(fileToUpload, (state, value) => console.log("Upload state", {state, value}));
 }

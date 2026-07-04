@@ -1,9 +1,9 @@
-import { chunk_size } from "hiveCodes";
+import { chunk_infos_size, chunk_size } from "hiveCodes";
 
 export class HiveStorage {
     #storage: Uint8Array;
-    #indexes: Uint32Array;
-    lastIndex = -1;
+    #indexes: Array<string>; // contains index (32 bytes) + current chunk index (2 bytes)
+    stored: number = 0;
     maxCapacity: number;
 
     constructor(size: number) {
@@ -13,7 +13,7 @@ export class HiveStorage {
         this.maxCapacity = size;
         this.#storage = new Uint8Array(size * chunk_size);
         this.#storage.fill(0);
-        this.#indexes = new Uint32Array(size);
+        this.#indexes = new Array(size);
     }
 
     static async splitFileToChunks(file: File): Promise<Uint8Array[]> {
@@ -27,42 +27,54 @@ export class HiveStorage {
 
     static async getFileHash(file: File): Promise<Uint8Array> {
         const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+        console.log({ digest, uintarray: new Uint8Array(digest) });
         return new Uint8Array(digest);
     }
 
     get remainingCapacity() {
-        return this.maxCapacity - this.lastIndex;
+        return this.maxCapacity - this.stored;
     }
 
-    findIndex(index: number): number | null {
+    findIndex(index: string): number | false {
         const found = this.#indexes.findIndex(e => e === index);
-        if (found === -1) return null;
-        return found;
+        return found > -1 ? found : false;
     }
 
-    #addIndex(index: number) {
+    #addIndex(index: string) {
+        console.log("Storing index");
         if (this.findIndex(index))
             throw { error: 101, message: "Index already exists" };
-        this.#indexes[this.lastIndex + 1] = index;
+        const firstFree = this.#indexes.findIndex(e => !e);
+        console.log({ firstFree });
+        this.#indexes[firstFree] = index;
+        return firstFree;
     }
 
-    async storeChunk(data: Uint8Array) {
-        if (this.lastIndex + 1 >= this.maxCapacity)
+    async storeChunk(chunkId: string, data: Uint8Array) {
+        if (this.remainingCapacity <= 0)
             throw { error: 100, message: "No space left" };
 
-        const index = new DataView(this.#storage.buffer).getUint32(0, true);
-        this.#addIndex(index);
+        // If chunk is not one of these two length, it's in a wrong format
+        if (data.byteLength !== 9 + chunk_size && data.byteLength !== 7 + chunk_size)
+            throw { error: 103, message: `Bad chunk format (expected ${9 + chunk_size} or ${7 + chunk_size} but got ${data.byteLength})` };
 
-        this.#storage.set(data, (this.lastIndex + 1) * chunk_size);
+        if (this.findIndex(chunkId))
+            throw { error: 105, message: `Chunk already stored` };
+
+        const chunkIdIndex = this.#addIndex(chunkId);
+
+        this.#storage.set(data, chunkIdIndex * chunk_size);
+        this.stored++;
+        console.log("Stored !!!");
         return true;
     }
 
-    async pullChunk(index: number): Promise<Uint8Array> {
+    async pullChunk(index: string): Promise<Uint8Array> {
         const indexFound = this.findIndex(index);
 
         if (!indexFound)
             throw { error: 102, message: "Chunk not found" };
 
-        return this.#storage.subarray(this.lastIndex * chunk_size, chunk_size);
+        return this.#storage.subarray(indexFound * chunk_size, chunk_size);
     }
 }

@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { OPEN } from "ws";
 import { WebSocket } from "@fastify/websocket";
 import { enums } from "hiveCodes";
+import { numberToUint8Array } from "./bitwise";
 
 export const hiveInformations = {
     totalStorageCapacity: 0,
@@ -30,21 +31,9 @@ export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInsta
         const payload = new Uint8Array(13);
         payload[0] = enums.server.infos;
 
-        payload[1] = hiveInformations.totalStorageCapacity >> 24;
-        payload[2] = (hiveInformations.totalStorageCapacity & 0x00FF0000) >> 16;
-        payload[3] = (hiveInformations.totalStorageCapacity & 0x0000FF00) >> 8;
-        payload[4] = hiveInformations.totalStorageCapacity & 0x000000FF;
-
-        payload[5] = hiveInformations.totalUsedCapacity >> 24;
-        payload[6] = (hiveInformations.totalUsedCapacity & 0x00FF0000) >> 16;
-        payload[7] = (hiveInformations.totalUsedCapacity & 0x0000FF00) >> 8;
-        payload[8] = hiveInformations.totalUsedCapacity & 0x000000FF;
-
-
-        payload[9] = totalConnectedClients >> 24;
-        payload[10] = (totalConnectedClients & 0x00FF0000) >> 16;
-        payload[11] = (totalConnectedClients & 0x0000FF00) >> 8;
-        payload[12] = (totalConnectedClients & 0x000000FF);
+        payload.set(numberToUint8Array(hiveInformations.totalStorageCapacity, 4), 1);
+        payload.set(numberToUint8Array(hiveInformations.totalUsedCapacity, 4), 5);
+        payload.set(numberToUint8Array(totalConnectedClients, 4), 9);
 
         client.send(payload);
     });

@@ -1,8 +1,9 @@
-import { chunk_size, enums } from "hiveCodes";
+import { chunk_infos_size, chunk_size, enums } from "hiveCodes";
 import { hiveInfos, informationsFromServerHandler } from "./handlers/informations.js";
 import { questionsFromServerHandler } from "./handlers/questions.js";
 import { HiveStorage } from "./storage.js";
 import { numberToUint8Array, uint8ArrayToNumber } from "./utils.js";
+import { actionsFromServerHandler } from "./handlers/actions.js";
 
 type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void) | null; };
 
@@ -25,9 +26,10 @@ export class HiveCommunication {
 
         ws.onmessage = (event: MessageEvent) => {
             const payload = new Uint8Array(event.data);
-            console.log("WS message", payload);
+            
             questionsFromServerHandler(payload, this);
             informationsFromServerHandler(payload, this);
+            actionsFromServerHandler(payload, this);
 
             if (this.#waitingForAnswer[payload[0]]) {
                 this.#waitingForAnswer[payload[0]]?.(payload);
@@ -54,7 +56,14 @@ export class HiveCommunication {
         return (hiveInfos.totalUsed + file.size) < hiveInfos.totalCapacity;
     }
 
-    async pullChunk(index: number): Promise<Uint8Array> {
+    async storeChunk(chunkId: string, chunk: Uint8Array) {
+        if (!this.canStoreChunk || this.#storageInstance.findIndex(chunkId))
+            throw { error: 104, message: "No space left or chunk already exists" };
+
+        await this.#storageInstance.storeChunk(chunkId, chunk);
+    }
+
+    async pullChunk(index: string): Promise<Uint8Array> {
         return this.#storageInstance.pullChunk(index);
     }
 
@@ -71,7 +80,7 @@ export class HiveCommunication {
         const chunks = await HiveStorage.splitFileToChunks(file);
 
         for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-            const payload = new Uint8Array(1 + 42 + chunk_size);
+            const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
             payload[0] = enums.client.actions.broadcast_chunk;
             
             let cursor = 1;
@@ -138,12 +147,12 @@ export class HiveCommunication {
     }
 
     get canStoreChunk() {
-        return this.#storageInstance.lastIndex < this.#storageInstance.maxCapacity;
+        return this.#storageInstance.remainingCapacity > 0;
     }
 
     get storage() {
         return {
-            used: this.#storageInstance.lastIndex < 0 ? 0 : this.#storageInstance.lastIndex,
+            used: this.#storageInstance.stored,
             total: this.#storageInstance.maxCapacity
         };
     }

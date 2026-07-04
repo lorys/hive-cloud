@@ -1,6 +1,7 @@
 import { WebSocket } from '@fastify/websocket';
 import { categories, enums } from 'hiveCodes';
 import { numberToUint8Array, uint8ArrayToNumber } from '../bitwise';
+import { log } from '../..';
 
 const questionsSet = new Set(Object.values(enums.client.questions));
 
@@ -10,6 +11,8 @@ export function isQuestion(type: number) {
 
 export const clientQuestionsHandlers = {
     async [enums.client.questions.total_clients_having_chunk](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
+        log("total_clients_having_chunk");
+
         const broadcast = new Uint8Array(17);
         broadcast[0] = enums.server.questions.have_chunk;
         broadcast.set(buffer.subarray(1));

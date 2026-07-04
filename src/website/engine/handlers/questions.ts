@@ -9,7 +9,7 @@ export async function questionsFromServerHandler(payload: Uint8Array, hive: Hive
 
     const params = payload.subarray(1);
 
-    const actions: Record<number, ChunkAction> = {
+    const questions: Record<number, ChunkAction> = {
         // Do we have a chunk ? If so, send it
         async [enums.server.questions.have_chunk_and_send](args: Uint8Array) {
             const wantedChunkIndex = new DataView(args.buffer, 1, args.byteLength).getUint32(0, true);
@@ -41,11 +41,11 @@ export async function questionsFromServerHandler(payload: Uint8Array, hive: Hive
         },
     };
 
-    const action = actions[type];
-    if (!action) return;
+    const question = questions[type];
+    if (!question) return;
 
     try {
-        const answer = await action(params);
+        const answer = await question(params);
         if (!answer) return;
         const answerPayload = new Uint8Array(1 + answer.length);
         answerPayload[0] = type;

@@ -1,17 +1,19 @@
 import { FastifyInstance } from 'fastify'
 import websocket, { WebSocket } from '@fastify/websocket';
 import { routeWs } from './router';
+import { chunk_infos_size, chunk_size } from 'hiveCodes';
+import { log } from '..';
 
 export function handleWebsockets(fastify: FastifyInstance) {
     fastify.register(websocket, {
         options: {
-            maxPayload: 1048608
+            maxPayload: 1 + chunk_infos_size + chunk_size
         } 
     });
 
     fastify.register(async function (fastify) {
         fastify.get('/hive', { websocket: true }, (socket) => {
-
+            log("Device connected");
             socket.hive = {
                 sentInformations: false,
                 hasChunks: new Set()
