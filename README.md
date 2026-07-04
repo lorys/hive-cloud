@@ -59,30 +59,6 @@ Each client asks regularly if each of it's chunks are stored in X-1 other client
 
 ⚠️ Please, Don't send personal data. It's broadcasted to everyone !
 
-## Chunk's format during transfers
-
-A chunk is 1 048 576 bytes (or 1MiB). Full or not, it will always be the same size.
-
-But we can only process it completely if we have the 31 bytes of informations needed.
-
-Here are the different data required to process a chunk :
-
-- **16 bytes** : file's entire hash, used as an index and/or name
-- **2 bytes** : current chunk's index.
-- **2 bytes** : total chunks for this file
-- **5 bytes** : total bytes in this file 👈 Only present in the last chunk
-- **6 bytes** : chunk's upload time (unix timestamp)
-- **1 048 576 bytes** : the entier chunk (filled with zeros if the chunk is smaller than the set size).
-
-These data allow us to follow a file and know what part is missing.
-
-A file can have 65 535 chunks so a single file cannot exceed **~65 gigabytes**.
-
-A chunk has a lifetime of 30 days, when we come near this limit, the client should reupload the chunk (automatically if possible).
-
-This exact format, explained above, is used only during transfers between servers and clients (codes `0x00`, `0x11` and `0x49`).
-Clients have a slightly different approach when it comes to storing chunks.
-
 ## Communication client <> server
 
 We don't use JSON in this project. There's only bytes and bits !
@@ -117,7 +93,6 @@ Since the client has 2 concerns :
 - **storing** chunks
 - **creating** new chunks
 
-
 #### Client's questions
 
 - `0x37` : How many clients stores this chunk `<id>` ?
@@ -130,3 +105,27 @@ Since the client has 2 concerns :
 ### Client's informations
 
 - `0x51` : The client also sends informations to the server about the current capacity and usage.
+
+## Chunk's format during transfers
+
+A chunk is `1 048 576 bytes` (or 1MiB). Full or not, it will always be the same size.
+
+But we can only process it completely if we have the 31 bytes of informations needed.
+
+Here are the different data required to process a chunk :
+
+- **16 bytes** : file's entire hash, used as an index and/or name
+- **2 bytes** : current chunk's index.
+- **2 bytes** : total chunks for this file
+- **5 bytes** : total bytes in this file 👈 Only present in the last chunk
+- **6 bytes** : chunk's upload time (unix timestamp)
+- **1 048 576 bytes** : the entier chunk (filled with zeros if the chunk is smaller than the set size).
+
+These data allow us to follow a file and know what part is missing.
+
+A file can have 65 535 chunks so a single file cannot exceed **~65 gigabytes**.
+
+A chunk has a lifetime of 30 days, when we come near this limit, the client should reupload the chunk (automatically if possible).
+
+This exact format, explained above, is used only during transfers between servers and clients (codes `0x00`, `0x11` and `0x49`).
+Clients have a slightly different approach when it comes to storing chunks.
