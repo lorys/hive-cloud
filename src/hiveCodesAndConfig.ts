@@ -1,4 +1,8 @@
 export const chunk_size = 1_048_576;
+export const chunk_infos_size = 42;
+
+export const chunk_redundancy = 10;
+export const chunk_start_redundancy = 20;
 
 export const enums = {
     client: {
