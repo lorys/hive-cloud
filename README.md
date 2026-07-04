@@ -112,7 +112,7 @@ A chunk is `1 048 576 bytes` (or 1MiB). Full or not, it will always be the same 
 
 But we can only process it completely if we have the informations needed (in this order, after the code):
 
-- **32 bytes** : file's entire hash, used as an index and/or name
+- **32 bytes** : file's entire hash (sha256), used as an index and/or name
 - **2 bytes** : current chunk's index.
 - **2 bytes** : total chunks for this file
 - **5 bytes** : total bytes in this file 👈 Only present in the last chunk
