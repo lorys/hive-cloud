@@ -2,6 +2,12 @@ import { chunk_size, enums } from "hiveCodes";
 import { HiveCommunication } from "../communication";
 import { byId } from "../utils";
 
+export const hiveInfos = {
+    totalCapacity: 0,
+    totalUsed: 0,
+    totalClients: 0
+}
+
 export async function informationsFromServerHandler(payload: Uint8Array, _hive: HiveCommunication) {
     const type = payload[0];
     if (type !== enums.server.infos) return;
@@ -19,6 +25,10 @@ export async function informationsFromServerHandler(payload: Uint8Array, _hive: 
     else if (totalUsedFormatted >= chunk_size) totalUsedFormatted = (totalUsedFormatted / chunk_size) + " MiB";
 
     const totalClients = new DataView(payload.buffer).getUint32(9, false);
+
+    hiveInfos.totalCapacity = totalCapacity;
+    hiveInfos.totalUsed = totalUsed;
+    hiveInfos.totalClients = totalClients;
 
     byId("available_storage").innerHTML = String(totalCapacityFormatted);
     byId("used_storage").innerHTML = String(totalUsedFormatted);

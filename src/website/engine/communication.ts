@@ -1,8 +1,8 @@
-import { enums } from "hiveCodes";
-import { informationsFromServerHandler } from "./handlers/informations.js";
+import { chunk_size, enums } from "hiveCodes";
+import { hiveInfos, informationsFromServerHandler } from "./handlers/informations.js";
 import { questionsFromServerHandler } from "./handlers/questions.js";
 import { HiveStorage } from "./storage.js";
-import { numberToUint8Array } from "./utils.js";
+import { numberToUint8Array, uint8ArrayToNumber } from "./utils.js";
 
 type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void) | null; };
 
@@ -51,21 +51,51 @@ export class HiveCommunication {
     }
 
     async #canUploadFileToHive(file: File) {
-        const payload = new Uint8Array(2);
-        payload[0] = file.size;
-        this.#ws?.send(payload);
+        return (hiveInfos.totalUsed + file.size) < hiveInfos.totalCapacity;
     }
 
     async pullChunk(index: number): Promise<Uint8Array> {
         return this.#storageInstance.pullChunk(index);
     }
 
-    async uploadFileToHive(file?: File | null, callback?: (chunks: Uint8Array[]) => void) {
+    async uploadFileToHive(file: File, callback: (state: 'splitting' | 'broadcasting' | 'stored' | 'no_space', value?: number) => void) {
         if (!file) return;
+
+        if (!this.#canUploadFileToHive(file)) {
+            callback('no_space');
+            return;
+        }
+        
+        callback('splitting', file.size / chunk_size);
+        const chunkId = await HiveStorage.getFileHash(file);
         const chunks = await HiveStorage.splitFileToChunks(file);
-        // TODO: broadcast each chunk across the hive.
-        console.log("Uploading file to hive:", file.name, chunks.length, "chunk(s)");
-        if (callback) callback(chunks);
+
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+            const payload = new Uint8Array(1 + 42 + chunk_size);
+            payload[0] = enums.client.actions.broadcast_chunk;
+            
+            let cursor = 1;
+            
+            payload.set(chunkId, cursor);
+            cursor += 32;
+            
+            payload.set(numberToUint8Array(chunkIndex, 2), cursor);
+            cursor += 2;
+            
+            payload.set(numberToUint8Array(chunks.length, 2), cursor);
+            cursor += 2;
+            
+            if (chunkIndex === chunks.length - 1) {
+                payload.set(numberToUint8Array(file.size, 5), cursor);
+                cursor += 5;
+            }
+
+            payload.set(chunks[chunkIndex], cursor);
+            
+            callback('broadcasting', chunkIndex);
+            this.#ws?.send(payload);
+        }
+        
     }
 
     async answerHive(payload: Uint8Array<ArrayBuffer>) {
@@ -74,8 +104,13 @@ export class HiveCommunication {
     }
 
     waitForAnswer(type: number): Promise<Uint8Array> {
-        return new Promise((resolve) => {
-            this.#waitingForAnswer[type] = resolve;
+        return new Promise((resolve, reject) => {
+            const t = setTimeout(() => reject("Answer took too long"), 4000);
+            this.#waitingForAnswer[type] = (...args) => {
+                resolve(...args);
+                clearTimeout(t);
+                delete this.#waitingForAnswer[type];
+            };
         });
     }
 
@@ -85,7 +120,7 @@ export class HiveCommunication {
         payload.set(numberToUint8Array(chunkId, 16), 1);
         this.#ws?.send(payload);
         const answer = await this.waitForAnswer(payload[0]);
-        console.log("✅✅✅✅✅✅✅", answer);
+        return uint8ArrayToNumber(answer);
     }
 
     async downloadFileFromHive(chunkId: number) {

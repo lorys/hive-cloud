@@ -25,6 +25,11 @@ export class HiveStorage {
         return chunks;
     }
 
+    static async getFileHash(file: File): Promise<Uint8Array> {
+        const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+        return new Uint8Array(digest);
+    }
+
     get remainingCapacity() {
         return this.maxCapacity - this.lastIndex;
     }
