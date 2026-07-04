@@ -16,8 +16,6 @@ export const tmpHiveInformations = {
 };
 
 export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInstance) {
-    const start = Date.now();
-
     hiveInformations.totalStorageCapacity = tmpHiveInformations.totalStorageCapacity;
     hiveInformations.totalUsedCapacity = tmpHiveInformations.totalUsedCapacity;
 
@@ -54,7 +52,5 @@ export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInsta
     fastify.websocketServer.clients.forEach(client => {
         (client as WebSocket).hive.sentInformations = false;
     })
-
-    console.log(`Broadcast duration : ${Date.now() - start} ms`);
 
 };
