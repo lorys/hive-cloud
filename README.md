@@ -123,4 +123,4 @@ These data allow us to follow a file and know what part is missing.
 A file can have 65 535 chunks so a single file cannot exceed **~65 gigabytes**.
 
 This exact format, explained above, is used only during transfers between servers and clients (codes `0x00`, `0x11` and `0x49`).
-Clients have a slightly different approach when it comes to storing chunks.
+Clients have a different approach when it comes to storing chunks.
