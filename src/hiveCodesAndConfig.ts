@@ -13,8 +13,7 @@ export const enums = {
     server: {
         questions: {
             have_chunk_and_send: 0x00,
-            have_chunk: 0x01,
-            can_store_chunk: 0x02
+            have_chunk: 0x01
         },
         actions: {
             store_chunk: 0x11

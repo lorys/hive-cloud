@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { numberToUint8Array, uint8ArrayToNumber } from '../internals/bitwise';
 
 describe('Number to buffer / bitwise operations', () => {
+
     test('uint8array to number', () => {
         const arr = new Uint8Array(4);
         arr[0] = 0xAA;

@@ -1,29 +1,77 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { routeWs } from '../internals/router';
 import { clientQuestionsHandlers } from '../internals/handlers/questions';
-// import { clientActionsHandlers } from '../internals/handlers/actions';
-// import { clientAnswersHandlers } from '../internals/handlers/answers';
-// import { clientInfosHandlers } from '../internals/handlers/informations';
+import { clientActionsHandlers } from '../internals/handlers/actions';
+import { clientAnswersHandlers } from '../internals/handlers/answers';
+import { clientInfosHandlers } from '../internals/handlers/informations';
 import { enums } from '../hiveCodesAndConfig';
 
 
 describe('Should route properly all operations', () => {
+    let wsClient: any = null;
+    let allWsClients: any = null;
 
-    clientQuestionsHandlers[enums.client.questions.total_clients_having_chunk] = vi.fn();
+    beforeEach(() => {
+        Object.keys(clientQuestionsHandlers).forEach((key: any) => {
+            clientQuestionsHandlers[key] = vi.fn();
+        })
+        Object.keys(clientActionsHandlers).forEach((key: any) => {
+            clientActionsHandlers[key] = vi.fn();
+        })
+        Object.keys(clientAnswersHandlers).forEach((key: any) => {
+            clientAnswersHandlers[key] = vi.fn();
+        })
 
-    const wsClient = {
-        send: vi.fn()
-    };
+        clientInfosHandlers[enums.client.infos] = vi.fn();
 
-    const allWsClients = new Array(10).map(() => ({
-        send: vi.fn()
-    }))
+        wsClient = {
+            send: vi.fn()
+        };
 
-    test('route questions', async () => {
+        allWsClients = new Array(10).map(() => ({
+            send: vi.fn()
+        }));
+    });
+
+    it('routes questions', async () => {
+        const questions = Object.keys(enums.client.questions);
+        for (let a = 0; a < questions.length; a++) {
+            const buff = new Uint8Array(1);
+            const code = (enums.client.questions as any)[questions[a]!];
+            buff[0] = code;
+            await routeWs(buff, wsClient as any, allWsClients as any);
+            expect(clientQuestionsHandlers[code]).toHaveBeenCalled();
+        }
+    });
+
+    it('routes actions', async () => {
+        const actions = Object.keys(enums.client.actions);
+        for (let a = 0; a < actions.length; a++) {
+            const buff = new Uint8Array(1);
+            const code = (enums.client.actions as any)[actions[a]!];
+            buff[0] = enums.client.actions.broadcast_chunk;
+            await routeWs(buff, wsClient as any, allWsClients as any);
+            expect(clientActionsHandlers[code]).toHaveBeenCalled();
+        }
+    });
+
+    it('routes answers', async () => {
+        const actions = Object.keys(enums.server.questions);
+        for (let a = 0; a < actions.length; a++) {
+            const buff = new Uint8Array(1);
+            const code = (enums.server.questions as any)[actions[a]!];
+            buff[0] = code;
+            await routeWs(buff, wsClient as any, allWsClients as any);
+            expect(clientAnswersHandlers[code]).toHaveBeenCalled();
+        }
+    });
+
+    it('routes infos', async () => {
         const buff = new Uint8Array(1);
-        buff[0] = enums.client.questions.total_clients_having_chunk;
+        const code = enums.client.infos;
+        buff[0] = code;
         await routeWs(buff, wsClient as any, allWsClients as any);
-        expect(clientQuestionsHandlers[enums.client.questions.total_clients_having_chunk]).toHaveBeenCalled();
+        expect(clientInfosHandlers[code]).toHaveBeenCalled();
     });
 
 });
