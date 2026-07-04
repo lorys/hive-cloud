@@ -80,10 +80,16 @@ A file can have 65 535 chunks so a single file cannot exceed **~65 gigabytes**.
 
 A chunk has a lifetime of 30 days, when we come near this limit, the client should reupload the chunk (automatically if possible).
 
-This exact format, explained above, is used only during transfers between servers and clients.
+This exact format, explained above, is used only during transfers between servers and clients (codes `0x00`, `0x11` and `0x49`).
 Clients have a slightly different approach when it comes to storing chunks.
 
 ## Communication client <> server
+
+We don't use JSON in this project. There's only bytes and bits !
+
+Each ***codes*** you'll see in this documentation **must be** the first byte in any payload.
+
+Take a look at the [hiveCodesAndConfig.ts](https://github.com/lorys/hive-cloud/blob/main/src/hiveCodesAndConfig.ts) to have up-to-date informations.
 
 ### > Server's **questions**, **actions** and **informations**
 
@@ -92,21 +98,6 @@ Clients have a slightly different approach when it comes to storing chunks.
 - `0x00` : Do we have a chunk ? If so, send it
 - `0x01` : Do we have a chunk ? yes or *no*
 - `0x02` : Can we store a chunk ? 
-- `0x03` : How many chunks do you have ?
-- `0x04` : How many chunks can you have ?
-
-Any questions asked from the server to a client will follow this format :
-```
-|   question's code  |          params         |
-|       1 byte       |      1 to 1MiB bytes    |
-```
-
-Any answer sent from client to the server will follow this format :
-
-```
-|   question's code  |          answer         |
-|       1 byte       |      1 to 1MiB bytes    |
-```
 
 > 👉 The server only cares about positive answers. The clients should only send something when it's usefull.
 
@@ -115,13 +106,6 @@ Any answer sent from client to the server will follow this format :
 - `0x11` : Store this chunk.
 
 The server doesn't expect any answer from the client when asking for an action. It will know the state of a given chunk when it'll ask for it.
-
-An action sent from the server can only follow this format : 
-
-```
-|    action's code   |        params      |
-|       1 byte       |      1MiB bytes    |
-```
 
 #### The server communicates informations about Hive's current state
 
@@ -133,26 +117,16 @@ Since the client has 2 concerns :
 - **storing** chunks
 - **creating** new chunks
 
-There's different requests for each.
 
-Any questions asked from the client to the server will follow this format :
-```
-|   question's code  |       params       |
-|       1 byte       |   0 to 32 bytes    |
-```
-
-Any answer sent from server to the client will follow this format :
-```
-|   question's code  |       answer       |
-|       1 byte       |   0 to 32 bytes    |
-```
+#### Client's questions
 
 - `0x37` : How many clients stores this chunk `<id>` ?
 - `0x38` : Can we store a file of `N` bytes named `<hash>` ?
 
 #### Client's actions
 
-- `0x49` : store this chunk `<hash>`. The request is in this format :
-```
-| 0x49 | chunk 1MiB |
-```
+- `0x49` : broadcast a chunk. In case the chunk's redundancy is too low.
+
+### Client's informations
+
+- `0x51` : The client also sends informations to the server about the current capacity and usage.
