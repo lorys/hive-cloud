@@ -19,7 +19,7 @@ export function handleWebsockets(fastify: FastifyInstance) {
                 hasChunks: new Set()
             };
 
-            socket.on('message', async (buffer: Buffer, isBinary) => {
+            socket.on('message', async (buffer: Buffer) => {
                 if (!(buffer instanceof Buffer)) {
                     console.log("not binary", buffer);
                     return;

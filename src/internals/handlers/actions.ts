@@ -9,7 +9,7 @@ export function isAction(type: number) {
 }
 
 export const clientActionsHandlers = {
-    async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
+    async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, _wsClient: WebSocket, allClients: Set<WebSocket>) {
         log("broadcast_chunk");
 
         let askedTo = 0;

@@ -57,6 +57,16 @@ Any chunk is supposed to be stored on X clients.
 Each client asks regularly if each of it's chunks are stored in X-1 other clients, while answering to this question, the server, will or won't (depending on the number of copies stored of a given chunk), ask the client to send the chunk and will forward it to another client able to store a chunk.
 > Each client should look after the safety of it's own data.
 
+### Keeping chunks redundant
+
+Every client runs a redundancy check on a loop. For each chunk it holds, it asks the hive how many clients currently store it (`0x37`) and reacts to the answer :
+
+- **Too few copies** (`holders < chunk_redundancy`) : the client re-broadcasts the chunk (`0x49`) so the hive can replicate it further. A chunk on the verge of being lost (`0` copies) is therefore the most aggressively re-broadcast.
+- **Too many copies** (`holders > chunk_redundancy`) : the chunk is over-replicated and wasting RAM. Every holder rolls a die and, **1 time out of 10**, drops its own copy. Doing it probabilistically avoids every holder dropping the chunk at the same moment.
+- **A sibling is gone** : a client can only rebuild a file if *all* its chunks still live somewhere. If a multi-chunk file has a chunk missing from the whole hive, the file is unrecoverable, so the client deletes every chunk it kept for that file to reclaim the space.
+
+> A client can never lose a chunk it is currently holding, so it only ever deletes over-replicated copies or chunks belonging to an already-doomed file.
+
 ⚠️ Please, Don't send personal data. It's broadcasted to everyone !
 
 ## Communication client <> server

@@ -9,7 +9,7 @@ export function isInfos(type: number) {
 }
 
 export const clientInfosHandlers = {
-    async [enums.client.infos](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
+    async [enums.client.infos](buffer: Uint8Array, wsClient: WebSocket, _allClients: Set<WebSocket>) {
         log("infos");
 
         if (wsClient.hive.sentInformations) return;
