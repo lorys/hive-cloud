@@ -1,6 +1,6 @@
+import { chunkIdToString } from "commons";
 import { HiveCommunication } from "../communication";
-import { enums, chunk_size } from "hiveCodes";
-import { chunkIdToString, uint8ArrayToNumber } from "../utils";
+import { enums, chunk_id_size } from "hiveCodes";
 
 type ChunkAction = (args: Uint8Array) => Promise<Uint8Array | null>;
 
@@ -14,10 +14,10 @@ export async function actionsFromServerHandler(payload: Uint8Array, hive: HiveCo
         // Do we have a chunk ? If so, send it
         async [enums.server.actions.store_chunk](args: Uint8Array) {
             console.log("Received store chunk action", args);
-            const chunkIndexArr = args.subarray(0, 34);
+            const chunkIndexArr = args.subarray(0, chunk_id_size);
 
             try {
-                const chunk = await hive.storeChunk(chunkIdToString(chunkIndexArr), args.subarray(33));
+                const chunk = await hive.storeChunk(chunkIdToString(chunkIndexArr), args.subarray(chunk_id_size));
             } catch (e) {
                 console.log("Error while storing chunk", e);
             }

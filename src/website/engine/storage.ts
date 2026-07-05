@@ -1,4 +1,5 @@
-import { chunk_infos_size, chunk_size } from "hiveCodes";
+import { uint8ArrayToNumber } from "commons";
+import { chunk_header_size, chunk_infos_size, chunk_size } from "hiveCodes";
 
 export class HiveStorage {
     #storage: Uint8Array;
@@ -11,7 +12,7 @@ export class HiveStorage {
             throw "No size specified.";
         }
         this.maxCapacity = size;
-        this.#storage = new Uint8Array(size * chunk_size);
+        this.#storage = new Uint8Array(size * (chunk_header_size + chunk_size));
         this.#storage.fill(0);
         this.#indexes = new Array(size);
     }
@@ -35,19 +36,32 @@ export class HiveStorage {
         return this.maxCapacity - this.stored;
     }
 
-    findIndex(index: string): number | false {
-        const found = this.#indexes.findIndex(e => e === index);
+    findChunkId(chunkId: string): number | false {
+        const found = this.#indexes.findIndex(e => e === chunkId);
         return found > -1 ? found : false;
     }
 
-    #addIndex(index: string) {
-        console.log("Storing index");
-        if (this.findIndex(index))
+    #deleteIndex(chunkId: string) {
+        const indexFound = this.findChunkId(chunkId);
+
+        if (indexFound === false)
+            throw { error: 102, message: "Chunk not found" };
+
+        this.#indexes[indexFound]
+    }
+
+    #addIndex(chunkId: string) {
+        console.log("Storing chunkId");
+        if (this.findChunkId(chunkId))
             throw { error: 101, message: "Index already exists" };
         const firstFree = this.#indexes.findIndex(e => !e);
         console.log({ firstFree });
-        this.#indexes[firstFree] = index;
+        this.#indexes[firstFree] = chunkId;
         return firstFree;
+    }
+
+    get allIndexes() {
+        return this.#indexes.filter(e => !!e);
     }
 
     async storeChunk(chunkId: string, data: Uint8Array) {
@@ -55,26 +69,44 @@ export class HiveStorage {
             throw { error: 100, message: "No space left" };
 
         // If chunk is not one of these two length, it's in a wrong format
-        if (data.byteLength !== 9 + chunk_size && data.byteLength !== 7 + chunk_size)
-            throw { error: 103, message: `Bad chunk format (expected ${9 + chunk_size} or ${7 + chunk_size} but got ${data.byteLength})` };
+        if (data.byteLength !== chunk_header_size + chunk_size)
+            throw { error: 103, message: `Bad chunk format (expected ${chunk_header_size + chunk_size} but got ${data.byteLength})` };
 
-        if (this.findIndex(chunkId))
+        if (this.findChunkId(chunkId))
             throw { error: 105, message: `Chunk already stored` };
 
         const chunkIdIndex = this.#addIndex(chunkId);
 
-        this.#storage.set(data, chunkIdIndex * chunk_size);
+        this.#storage.set(data, chunkIdIndex * (chunk_header_size + chunk_size));
         this.stored++;
-        console.log("Stored !!!");
         return true;
     }
 
-    async pullChunk(index: string): Promise<Uint8Array> {
-        const indexFound = this.findIndex(index);
+    pullChunk(chunkId: string): Uint8Array {
+        const indexFound = this.findChunkId(chunkId);
 
-        if (!indexFound)
+        if (indexFound === false)
             throw { error: 102, message: "Chunk not found" };
 
-        return this.#storage.subarray(indexFound * chunk_size, chunk_size);
+        return this.#storage.subarray(indexFound * (chunk_header_size + chunk_size), (chunk_header_size + chunk_size));
+    }
+
+    getChunkHeaders(chunkId: string) {
+        const chunk = this.pullChunk(chunkId);
+
+        return {
+            currentIndex: uint8ArrayToNumber(chunk.subarray(0, 2)),
+            totalChunks: uint8ArrayToNumber(chunk.subarray(2, 4)),
+            totalBytes: uint8ArrayToNumber(chunk.subarray(4, 9)),
+        };
+    }
+
+    deleteChunk(chunkId: string) {
+        const indexFound = this.findChunkId(chunkId);
+
+        if (indexFound === false)
+            throw { error: 102, message: "Chunk not found" };
+
+        this.#deleteIndex(chunkId);
     }
 }

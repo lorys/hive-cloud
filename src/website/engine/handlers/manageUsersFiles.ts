@@ -2,7 +2,6 @@ import { hive } from "../main";
 
 let usersChunkIds: { [key: string]: string } = {};
 
-let managingUsersFiles = false;
 
 function renderUserFiles() {
     const userFilesDOM = document.querySelector<HTMLDivElement>("#user_files");
@@ -42,7 +41,6 @@ function renderUserFiles() {
 
 export function manageUserFiles() {
     console.log("mange user files");
-    managingUsersFiles = true;
 
     const locallyStoredFiles = Object.keys(localStorage).filter(e => e.startsWith("hive_")).reduce((acc, e) => ({ ...acc, [e.replace("hive_", "")]: localStorage.getItem(e) as string }), {});
     console.log({ locallyStoredFiles });
@@ -50,12 +48,10 @@ export function manageUserFiles() {
     const needToUpdate = Object.keys(locallyStoredFiles).length !== Object.keys(usersChunkIds).length;
 
     if (!needToUpdate) {
-        managingUsersFiles = false;
         return;
     }
 
     usersChunkIds = locallyStoredFiles;
 
     renderUserFiles();
-    managingUsersFiles = false;
 }

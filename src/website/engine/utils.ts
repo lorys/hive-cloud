@@ -51,11 +51,3 @@ export function uint8ArrayToNumber(arr: Uint8Array) {
     }
     return val;
 };
-
-export function chunkIdToString(arr: Uint8Array) {
-    let chunkId = ``;
-    for (let a = 0; a < arr.length; a++) {
-        chunkId += arr[a].toString(36);
-    }
-    return chunkId;
-}

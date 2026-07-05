@@ -24,7 +24,7 @@ export const clientActionsHandlers = {
             const clientHasCapacity = ((client.hive.totalStorage || 0) - (client.hive.usedStorage || 0)) > 0;
             if (!clientHasCapacity) return;
 
-            client.send(payload, (err) => console.log(err ? ["WS ERROR =>>>>>>", err] : ""));
+            client.send(payload);
             askedTo++;
         });
         log(`Broadcasted chunk in ${Date.now() - start} ms.`);

@@ -1,9 +1,10 @@
-import { chunk_infos_size, chunk_size, enums } from "hiveCodes";
+import { chunk_header_size, chunk_id_size, chunk_infos_size, chunk_size, enums } from "hiveCodes";
 import { hiveInfos, informationsFromServerHandler } from "./handlers/informations.js";
 import { questionsFromServerHandler } from "./handlers/questions.js";
 import { HiveStorage } from "./storage.js";
-import { chunkIdToString, numberToUint8Array, uint8ArrayToNumber } from "./utils.js";
+import { numberToUint8Array, stringTochunkId, uint8ArrayToNumber } from "commons";
 import { actionsFromServerHandler } from "./handlers/actions.js";
+import { chunkIdToString } from "commons";
 
 type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void) | null; };
 
@@ -57,7 +58,7 @@ export class HiveCommunication {
     }
 
     async storeChunk(chunkId: string, chunk: Uint8Array) {
-        if (!this.canStoreChunk || this.#storageInstance.findIndex(chunkId))
+        if (!this.canStoreChunk || this.#storageInstance.findChunkId(chunkId))
             throw { error: 104, message: "No space left or chunk already exists" };
 
         await this.#storageInstance.storeChunk(chunkId, chunk);
@@ -110,6 +111,14 @@ export class HiveCommunication {
         
     }
 
+    async broadcastChunk(chunkId: string) {
+        const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
+        payload[0] = enums.client.actions.broadcast_chunk;
+        payload.set(stringTochunkId(chunkId), 1);
+        payload.set(this.#storageInstance.pullChunk(chunkId), 43);
+        this.#ws?.send(payload);
+    }
+
     async answerHive(payload: Uint8Array<ArrayBuffer>) {
         console.log("Answering server with", payload);
         this.#ws?.send(payload);
@@ -126,10 +135,10 @@ export class HiveCommunication {
         });
     }
 
-    async isFilePresentInHive(chunkId: number) {
-        const payload = new Uint8Array(33);
+    async isFilePresentInHive(chunkId: string) {
+        const payload = new Uint8Array(1 + chunk_id_size);
         payload[0] = enums.client.questions.total_clients_having_chunk;
-        payload.set(numberToUint8Array(chunkId, 32), 1);
+        payload.set(stringTochunkId(chunkId), 1);
         this.#ws?.send(payload);
         const answer = await this.waitForAnswer(payload[0]);
         return uint8ArrayToNumber(answer);

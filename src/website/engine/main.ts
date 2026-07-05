@@ -4,6 +4,7 @@ import { handleFileUpload, copyChunkId } from "./ui.js";
 import { byId } from "./utils.js";
 import { chunk_size } from "hiveCodes";
 import { manageUserFiles } from "./handlers/manageUsersFiles.js";
+import { chunkRedundancy } from "./chunksRedundancy.js";
 
 export interface HiveState {
     communication: HiveCommunication | null;
@@ -60,11 +61,34 @@ const start = async () => {
         hive.communication?.sendInfos();
     }, 1000);
 
+    let managingUsersFiles = false;
+
+
     setInterval(() => {
-        manageUserFiles();
+        if (managingUsersFiles) return;
+        managingUsersFiles = true;
+        try {
+            manageUserFiles();
+        } catch (err) {
+            console.log("Manage user file error", err);
+        }
+        managingUsersFiles = false;
     }, 500);
+
+    let redundancyCheckRunning = false;
+
+    setInterval(async () => {
+        if (redundancyCheckRunning || !hive.storage || !hive.communication) return;
+        redundancyCheckRunning = true;
+        try {
+            await chunkRedundancy(hive.storage, hive.communication);
+        } catch (err) {
+            console.log("Redundancy check error", err);
+        }
+        redundancyCheckRunning = false;
+    }, 250);
 }
 
 byId("agreed").onclick = start;
-byId<HTMLInputElement>("allowedChunks").value = "100";
+byId<HTMLInputElement>("allowedChunks").value = "300";
 byId<HTMLButtonElement>("copyButton").onclick = copyChunkId;
