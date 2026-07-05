@@ -231,6 +231,24 @@
                 0 18px 34px -18px rgba(224, 124, 10, 0.45),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
+        .link .holders {
+            font-size: 13px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        .link.lost {
+            border-color: rgba(200, 40, 40, 0.45);
+            background: linear-gradient(165deg, #ffffff, #ffecec);
+        }
+        #user_files_notice {
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(200, 40, 40, 0.4);
+            background: #ffecec;
+            color: #8a1f1f;
+            font-weight: 600;
+        }
 
         .link span:first-child {
             font-family: 'SF Mono', ui-monospace, monospace;
@@ -465,6 +483,7 @@
                 <div id="upload">
                     <h2>Upload</h2>
                 </div>
+                <div id="user_files_notice" style="display: none;"></div>
                 <div id="user_files">
                 </div>
             </div>
