@@ -4,7 +4,7 @@ import { clientQuestionsHandlers } from '../internals/handlers/questions';
 import { clientActionsHandlers } from '../internals/handlers/actions';
 import { clientAnswersHandlers } from '../internals/handlers/answers';
 import { clientInfosHandlers } from '../internals/handlers/informations';
-import { enums } from '../hiveCodesAndConfig';
+import { enums } from 'hiveCodes';
 
 
 describe('Should route properly all operations', () => {

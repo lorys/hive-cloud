@@ -27,7 +27,8 @@
     "skipLibCheck": true,
 
     "paths": {
-      "hiveCodes": ["./src/hiveCodesAndConfig.ts"]
+      "hiveCodes": ["./src/commons/hiveCodesAndConfig.ts"],
+      "commons": ["./src/commons/utils.ts"]
     } 
   },
   "include": ["src"],

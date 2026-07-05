@@ -6,7 +6,8 @@
     "lib": ["es2022", "dom", "dom.iterable"],
     "types": [],
     "paths": {
-      "hiveCodes": ["../../hiveCodesAndConfig.ts"]
+      "hiveCodes": ["../../commons/hiveCodesAndConfig.ts"],
+      "commons": ["../../commons/utils.ts"]
     },
     "noEmit": true,
     "isolatedModules": true,
@@ -14,5 +15,5 @@
 
     "strict": true
   },
-  "include": [".", "../../hiveCodesAndConfig.ts"]
+  "include": [".", "../../hiveCodesAndConfig.ts", "../../commons/utils.ts"]
 }
