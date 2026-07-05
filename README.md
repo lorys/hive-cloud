@@ -125,8 +125,10 @@ But we can only process it completely if we have the informations needed (in thi
 - **32 bytes** : file's entire hash (sha256), used as an index and/or name
 - **2 bytes** : current chunk's index.
 - **2 bytes** : total chunks for this file
-- **5 bytes** : total bytes in this file 👈 Only present in the last chunk
+- **5 bytes** : total bytes in this file
 - **1 048 576 bytes** : the entier chunk (filled with zeros if the chunk is smaller than the set size).
+
+> chunkId is `34 bytes` : file's entire hash + current chunk's index
 
 These data allow us to follow a file and know what part is missing.
 
