@@ -60,5 +60,34 @@ export async function handleFileUpload(file: File) {
         };
     });
 
-    await hive.communication?.uploadFileToHive(fileToUpload, (state, value) => console.log("Upload state", {state, value}));
+    const uploadStateModal = document.querySelector<HTMLButtonElement>("#upload_steps")!;
+    const uploadStateText = document.querySelector<HTMLButtonElement>("#upload_steps #state")!;
+    const closeUploadSteps = document.querySelector<HTMLButtonElement>("#close_upload_steps")!;
+    closeUploadSteps.onclick = () => {
+        uploadStateModal.style.display = 'none';
+    };
+    uploadStateModal.style.display = "block";
+
+    let chunkId = null;
+
+    await hive.communication?.uploadFileToHive(fileToUpload, (payload) => {
+        const { state } = payload;
+
+        if (state === 'splitting') {
+            uploadStateText.innerHTML = `Splitting in ${payload.value} chunks`;
+        } else if (state === 'broadcasting') {
+            uploadStateText.innerHTML = `Broadcasting chunk n. ${payload.value}`;
+        } else if (state === 'name') {
+            chunkId = payload.value;
+        } else if (state === 'no_space') {
+            uploadStateText.innerHTML = `Not enough space in the Hive ☹️ Try again later`
+        }
+    });
+    
+    if (!chunkId) {
+        uploadStateText.innerHTML = `An error occurred, reload the page.`;
+        return;
+    }
+
+    localStorage.setItem("hive_"+chunkId, file.name);
 }
