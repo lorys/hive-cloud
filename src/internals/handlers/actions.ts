@@ -25,6 +25,5 @@ export const clientActionsHandlers = {
             client.send(payload);
             askedTo++;
         });
-        log(`Broadcasted chunk to ${allClients.size} clients in ${Date.now() - start} ms.`);
     }
 };
