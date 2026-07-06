@@ -6,7 +6,7 @@ export function chunkIdToString(arr: Uint8Array) {
     return chunkId;
 }
 
-export function stringTochunkId(chunkId: string) {
+export function stringToChunkId(chunkId: string) {
     let bytes: number[] = [];
     chunkId.split(',').forEach(val => bytes.push(parseInt(val, 36)));
     const converted = new Uint8Array(bytes.length);

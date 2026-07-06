@@ -41,16 +41,15 @@ describe('Chunk storage works', () => {
     });
     it('Gets the right header infos', () => {
         const storage = new HiveStorage(1);
-        const chunkId = "0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x";
+        const chunkId = "0,1,2,3,4,5,6,7,8,9,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,0,5";
 
         const currentIndex = 5;
         const totalChunks = 300;
         const totalBytes = 424_242;
 
         const chunk = new Uint8Array(chunk_header_size + chunk_size);
-        chunk.set(numberToUint8Array(currentIndex, 2), 0);
-        chunk.set(numberToUint8Array(totalChunks, 2), 2);
-        chunk.set(numberToUint8Array(totalBytes, 5), 4);
+        chunk.set(numberToUint8Array(totalChunks, 2), 0);
+        chunk.set(numberToUint8Array(totalBytes, 5), 2);
 
         storage.storeChunk(chunkId, chunk);
 

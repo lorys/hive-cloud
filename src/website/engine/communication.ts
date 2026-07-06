@@ -2,7 +2,7 @@ import { chunk_header_size, chunk_id_size, chunk_infos_size, chunk_size, enums }
 import { hiveInfos, informationsFromServerHandler } from "./handlers/informations.js";
 import { questionsFromServerHandler } from "./handlers/questions.js";
 import { HiveStorage } from "./storage.js";
-import { numberToUint8Array, stringTochunkId, uint8ArrayToNumber } from "commons";
+import { numberToUint8Array, stringToChunkId, uint8ArrayToNumber } from "commons";
 import { actionsFromServerHandler } from "./handlers/actions.js";
 import { chunkIdToString } from "commons";
 
@@ -33,7 +33,7 @@ export class HiveCommunication {
             actionsFromServerHandler(payload, this);
 
             if (this.#waitingForAnswer[payload[0]]) {
-                this.#waitingForAnswer[payload[0]]?.(payload);
+                this.#waitingForAnswer[payload[0]]?.(payload.subarray(1));
 
                 // reset waitingForAnswer
                 delete this.#waitingForAnswer[payload[0]];
@@ -111,8 +111,8 @@ export class HiveCommunication {
     async broadcastChunk(chunkId: string) {
         const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
         payload[0] = enums.client.actions.broadcast_chunk;
-        payload.set(stringTochunkId(chunkId), 1);
-        payload.set(this.#storageInstance.pullChunk(chunkId), 43);
+        payload.set(stringToChunkId(chunkId), 1);
+        payload.set(this.#storageInstance.pullChunk(chunkId), 1 + chunk_id_size);
         this.#ws?.send(payload);
     }
 
@@ -135,9 +135,10 @@ export class HiveCommunication {
     async isFilePresentInHive(chunkId: string) {
         const payload = new Uint8Array(1 + chunk_id_size);
         payload[0] = enums.client.questions.total_clients_having_chunk;
-        payload.set(stringTochunkId(chunkId), 1);
+        payload.set(stringToChunkId(chunkId), 1);
         this.#ws?.send(payload);
         const answer = await this.waitForAnswer(payload[0]);
+        console.log("SERVER ANSWER TO QUESTION", answer);
         return uint8ArrayToNumber(answer);
     }
 

@@ -1,7 +1,7 @@
-import { chunk_redundancy } from "hiveCodes";
+import { chunk_id_size, chunk_redundancy } from "hiveCodes";
 import { HiveCommunication } from "./communication";
 import { HiveStorage } from "./storage";
-
+import { chunkIdToString, numberToUint8Array, stringToChunkId, uint8ArrayToNumber } from "commons";
 
 export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunication) {
 
@@ -27,7 +27,23 @@ export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunicat
 
         const chunkHeaders = storage.getChunkHeaders(chunkId);
 
-        console.log({ chunkHeaders });
+        for (let check = 0; check < chunkHeaders.totalChunks; check++) {
+            if (chunkHeaders.currentIndex !== check) { // We have this chunk, no need to check if someone else also does.
+                // Building chunk id
+                const buildChunkId = new Uint8Array(chunk_id_size);
+                buildChunkId.set(stringToChunkId(chunkId).subarray(0, chunk_id_size - 2), 0);
+                buildChunkId.set(numberToUint8Array(check, 2), chunk_id_size - 2);
+
+                const checkChunkId = chunkIdToString(buildChunkId);
+
+                const holders = await hive.isFilePresentInHive(checkChunkId);
+                console.log({ holders });
+                if (!holders) {
+                    storage.deleteChunk(checkChunkId);
+                    console.log("🗑️ ❌ Deleting", {checkChunkId, holders});
+                }
+            }
+        }
     }
 
     // For each chunks, ask how many clients has them, if total < min_chunk_redundancy we broadcast them.
