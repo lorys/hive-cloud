@@ -69,6 +69,23 @@ Every client runs a redundancy check on a loop. For each chunk it holds, it asks
 
 ⚠️ Please, Don't send personal data. It's broadcasted to everyone !
 
+### Downloading a file
+
+When a user downloads one of their files, the client walks every chunk index and asks the hive to send it (`0x41`). For each request the server asks the known holders to hand that chunk over (`0x00`), gathers their answers, and forwards a single copy back to the downloader (`0x41`).
+
+The client collects the chunks, concatenates their data back to the **exact original byte length** recorded in the chunk header, and — if the file was encrypted at upload time — asks for the password and decrypts it in the browser before saving. A small modal shows one box per chunk, each turning into a 🐝 as it arrives.
+
+### Guarding against hostile holders
+
+The server stores nothing, so it can't vouch for what a holder sends : a hostile client could answer a download with a **corrupted chunk**. To defend against this, the server never forwards the first copy it receives. It collects copies from the holders and only forwards the one a **majority agrees on**, byte for byte. A lone tampered copy is outvoted and dropped.
+
+A chunk might have very few holders (sometimes just one), so the server can't wait forever for a quorum. It settles on a chunk as soon as **either** :
+
+- a copy reaches `chunk_state_treshold` matching votes (enough agreement to trust it), **or**
+- every holder that was asked has answered (there's nothing left to wait for) and a majority still agrees.
+
+If no client holds the chunk, the server doesn't wait at all : the download fails fast. Copies live in the server's RAM for a few seconds at most, only while a download is in flight, then they're dropped.
+
 ## Communication client <> server
 
 We don't use JSON in this project. There's only bytes and bits !
