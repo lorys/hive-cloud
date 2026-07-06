@@ -72,11 +72,10 @@ export class HiveStorage {
         if (data.byteLength !== chunk_header_size + chunk_size)
             throw { error: 103, message: `Bad chunk format (expected ${chunk_header_size + chunk_size} but got ${data.byteLength})` };
 
-        if (this.findChunkId(chunkId))
+        if (this.findChunkId(chunkId) !== false)
             throw { error: 105, message: `Chunk already stored` };
 
         const chunkIdIndex = this.#addIndex(chunkId);
-
         this.#storage.set(data, chunkIdIndex * (chunk_header_size + chunk_size));
         this.stored++;
         return true;
@@ -87,13 +86,11 @@ export class HiveStorage {
 
         if (indexFound === false)
             throw { error: 102, message: "Chunk not found" };
-
-        return this.#storage.subarray(indexFound * (chunk_header_size + chunk_size), (chunk_header_size + chunk_size));
+        return this.#storage.subarray(indexFound * (chunk_header_size + chunk_size), indexFound * (chunk_header_size + chunk_size) + (chunk_header_size + chunk_size));
     }
 
     getChunkHeaders(chunkId: string) {
         const chunk = this.pullChunk(chunkId);
-
         return {
             currentIndex: uint8ArrayToNumber(chunk.subarray(0, 2)),
             totalChunks: uint8ArrayToNumber(chunk.subarray(2, 4)),

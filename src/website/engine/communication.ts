@@ -83,7 +83,6 @@ export class HiveCommunication {
         callback({ state: 'name', value: chunkIdToString(chunkId) });
 
         for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-            await new Promise(res => setTimeout(res, 2000));
             const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
             payload[0] = enums.client.actions.broadcast_chunk;
             
@@ -98,10 +97,8 @@ export class HiveCommunication {
             payload.set(numberToUint8Array(chunks.length, 2), cursor);
             cursor += 2;
             
-            if (chunkIndex === chunks.length - 1) {
-                payload.set(numberToUint8Array(file.size, 5), cursor);
-                cursor += 5;
-            }
+            payload.set(numberToUint8Array(file.size, 5), cursor);
+            cursor += 5;
 
             payload.set(chunks[chunkIndex], cursor);
             
