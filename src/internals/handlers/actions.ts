@@ -15,7 +15,6 @@ export const clientActionsHandlers = {
         payload[0] = enums.server.actions.store_chunk;
         payload.set(buffer.subarray(1), 1);
         
-        const start = Date.now();
         allClients.forEach(client => {
             if (askedTo > chunk_start_redundancy) return;
             
