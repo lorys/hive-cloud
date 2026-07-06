@@ -124,7 +124,6 @@ export class HiveCommunication {
     }
 
     async answerHive(payload: Uint8Array<ArrayBuffer>) {
-        console.log("Answering server with", payload);
         this.#ws?.send(payload);
     }
 
