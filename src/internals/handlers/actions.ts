@@ -10,13 +10,12 @@ export function isAction(type: number) {
 
 export const clientActionsHandlers = {
     async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, _wsClient: WebSocket, allClients: Set<WebSocket>) {
-        log("broadcast_chunk");
-
         let askedTo = 0;
 
         const payload = new Uint8Array(buffer.byteLength);
         payload[0] = enums.server.actions.store_chunk;
         payload.set(buffer.subarray(1), 1);
+        
         const start = Date.now();
         allClients.forEach(client => {
             if (askedTo > chunk_start_redundancy) return;

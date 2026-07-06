@@ -34,6 +34,6 @@ export async function informationsFromServerHandler(payload: Uint8Array, _hive: 
     byId("used_storage").innerHTML = String(totalUsedFormatted);
     byId("connected_devices").innerHTML = String(totalClients);
 
-    byId("used").style.width = (totalUsed*100/totalCapacity) + "%";
-    byId("used").innerHTML = (totalUsed*100/totalCapacity) + "%";
+    byId("used").style.width = (totalUsed*100/totalCapacity).toFixed(3) + "%";
+    byId("used").innerHTML = (totalUsed*100/totalCapacity).toFixed(3) + "%";
 }

@@ -1,7 +1,50 @@
+import { chunkIdToString, numberToUint8Array, stringToChunkId } from "commons";
+import { chunk_id_size } from "hiveCodes";
 import { hive } from "../main";
 
-let usersChunkIds: { [key: string]: string } = {};
+type StoredFile = { name: string; totalChunks: number };
 
+let usersChunkIds: { [key: string]: StoredFile } = {};
+
+function holderElement(fileId: string): HTMLElement | null {
+    return document.querySelector<HTMLElement>(`#user_files [data-holders="${fileId}"]`);
+}
+
+function actionButton(fileId: string): HTMLElement | null {
+    return document.querySelector<HTMLElement>(`#user_files [data-action="${fileId}"]`);
+}
+
+// Healthy file: shows how many times it's fully stored and offers a download.
+function updateFileHolders(fileId: string, holders: number) {
+    const el = holderElement(fileId);
+    if (el) el.innerHTML = `${holders} 🐝`;
+
+    const button = actionButton(fileId);
+    if (button) {
+        button.innerHTML = `⬇️ Download`;
+        button.onclick = () => hive.communication?.downloadFileFromHive(fileId);
+    }
+}
+
+// Lost file (a chunk nobody holds): we don't remove it, we let the user delete it.
+function markFileLost(fileId: string) {
+    const el = holderElement(fileId);
+    if (el) el.innerHTML = `lost 💀`;
+
+    const button = actionButton(fileId);
+    if (button) {
+        button.innerHTML = `🗑️ Delete`;
+        button.onclick = () => deleteUserFile(fileId);
+    }
+}
+
+// Only ever triggered by the user clicking "Delete" on a lost file.
+function deleteUserFile(fileId: string) {
+    console.log("🗑️ user deleted lost file", fileId);
+    localStorage.removeItem("hive_" + fileId);
+    delete usersChunkIds[fileId];
+    holderElement(fileId)?.closest(".link")?.remove();
+}
 
 function renderUserFiles() {
     const userFilesDOM = document.querySelector<HTMLDivElement>("#user_files");
@@ -11,29 +54,30 @@ function renderUserFiles() {
     }
 
     let newRender: Node[] = [];
-    
+
     Object.keys(usersChunkIds).forEach(chunk => {
         const sanityCheck = /^[a-zA-Z0-9\,]+$/;
-        console.log("sanityCheck", chunk.match(sanityCheck), chunk);
         if (chunk.match(sanityCheck) === null) {
             return;
         }
 
         const el = document.createElement('div');
         const nameEl = document.createElement('span');
+        const holdersEl = document.createElement('span');
         const buttonEl = document.createElement('span');
-        
-        nameEl.innerHTML = usersChunkIds[chunk] || chunk;
+
+        nameEl.innerHTML = usersChunkIds[chunk]?.name || chunk;
+        holdersEl.innerHTML = `searching for 🐝...`;
+        holdersEl.dataset.holders = chunk;
         buttonEl.innerHTML = `⬇️ Download`;
+        buttonEl.dataset.action = chunk;
         buttonEl.onclick = () => hive.communication?.downloadFileFromHive(chunk);
 
         el.classList.add('link');
-        el.append(nameEl, buttonEl);
-        
+        el.append(nameEl, holdersEl, buttonEl);
+
         newRender.push(el);
     });
-
-    console.log({usersChunkIds, newRender});
 
     userFilesDOM.innerHTML = '';
     userFilesDOM.append(...newRender);
@@ -42,20 +86,66 @@ function renderUserFiles() {
 export function manageUserFiles() {
     console.log("mange user files");
 
-    const locallyStoredFiles = Object.keys(localStorage).filter(e => e.startsWith("hive_")).reduce((acc, e) => ({ ...acc, [e.replace("hive_", "")]: localStorage.getItem(e) as string }), {});
-    console.log({ locallyStoredFiles });
+    const locallyStoredFiles: { [key: string]: StoredFile } = Object.keys(localStorage)
+        .filter(e => e.startsWith("hive_"))
+        .reduce((acc, e) => ({ ...acc, [e.replace("hive_", "")]: JSON.parse(localStorage.getItem(e) as string) }), {});
 
     const needToUpdate = Object.keys(locallyStoredFiles).length !== Object.keys(usersChunkIds).length;
 
     if (!needToUpdate) {
         return;
     }
-
     usersChunkIds = locallyStoredFiles;
 
     renderUserFiles();
 }
 
-export function checkUserFiles() {
+// Finds how many times a whole file is stored across the hive.
+// A file is only as available as its least held chunk, so we keep the lowest holder count.
+// A count of 0 means at least one chunk is gone: the file is lost.
+async function checkFileHolders(chunkId: string) {
+    const communication = hive.communication;
+    if (!communication) return;
+
+    const totalChunks = usersChunkIds[chunkId]?.totalChunks;
+    let minHolders = Infinity;
     
+    for (let index = 0; index < totalChunks; index++) {
+        console.log({usersChunkIds});
+        let holders: number;
+        try {
+            const wantedChunkId = new Uint8Array(chunk_id_size);
+            wantedChunkId.set(stringToChunkId(chunkId), 0);
+            wantedChunkId.set(numberToUint8Array(index, 2), chunk_id_size - 2);
+
+            holders = await communication.isChunkPresentInHive(chunkIdToString(wantedChunkId));
+        } catch (e) {
+            // Network hiccup or timeout: don't touch the file, we'll retry next tick.
+            console.log("Could not check holders for", chunkId, "chunk", index, e);
+            return;
+        }
+
+        minHolders = Math.min(minHolders, holders);
+        if (holders === 0) break; // one missing chunk is enough to lose the file
+    }
+
+    if (minHolders === 0) {
+        markFileLost(chunkId);
+    } else {
+        updateFileHolders(chunkId, minHolders);
+    }
+}
+
+let checkingInFlight = false;
+
+export async function checkUserFiles() {
+    if (checkingInFlight || !hive.communication) return;
+    checkingInFlight = true;
+    try {
+        for (const chunkId of Object.keys(usersChunkIds)) {
+            await checkFileHolders(chunkId);
+        }
+    } finally {
+        checkingInFlight = false;
+    }
 }

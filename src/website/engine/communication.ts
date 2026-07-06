@@ -25,15 +25,15 @@ export class HiveCommunication {
         this.#ws = ws;
         ws.binaryType = "arraybuffer";
 
-        ws.onmessage = (event: MessageEvent) => {
+        ws.onmessage = async (event: MessageEvent) => {
             const payload = new Uint8Array(event.data);
             
-            questionsFromServerHandler(payload, this);
-            informationsFromServerHandler(payload, this);
-            actionsFromServerHandler(payload, this);
+            await questionsFromServerHandler(payload, this);
+            await informationsFromServerHandler(payload, this);
+            await actionsFromServerHandler(payload, this);
 
             if (this.#waitingForAnswer[payload[0]]) {
-                this.#waitingForAnswer[payload[0]].map(fn => fn?.(payload.subarray(1)));
+                await Promise.allSettled(this.#waitingForAnswer[payload[0]].map(fn => fn?.(payload.subarray(1))));
 
                 // reset waitingForAnswer
                 delete this.#waitingForAnswer[payload[0]];
@@ -60,7 +60,6 @@ export class HiveCommunication {
     async storeChunk(chunkId: string, chunk: Uint8Array) {
         if (!this.canStoreChunk || this.#storageInstance.findChunkId(chunkId))
             throw { error: 104, message: "No space left or chunk already exists" };
-
         await this.#storageInstance.storeChunk(chunkId, chunk);
     }
 
@@ -68,7 +67,7 @@ export class HiveCommunication {
         return this.#storageInstance.pullChunk(index);
     }
 
-    async uploadFileToHive(file: File, callback: (payload: { state: 'name', value: string } | { state: 'splitting' | 'broadcasting', value: number } | { state: 'no_space' } ) => void) {
+    async uploadFileToHive(file: File, callback: (payload: { state: 'firstChunkId', value: { firstChunkId: string, totalChunks: number } } | { state: 'splitting' | 'broadcasting', value: number } | { state: 'no_space' } ) => void) {
         if (!file) return;
 
         if (!this.#canUploadFileToHive(file)) {
@@ -77,22 +76,30 @@ export class HiveCommunication {
         }
         
         callback({ state: 'splitting', value: Math.floor(file.size / chunk_size) < (file.size / chunk_size) ? Math.floor(file.size / chunk_size) + 1 : Math.floor(file.size / chunk_size) });
-        const chunkId = await HiveStorage.getFileHash(file);
+        const fileHash = await HiveStorage.getFileHash(file);
         const chunks = await HiveStorage.splitFileToChunks(file);
+        const chunkId = new Uint8Array(chunk_id_size);
+        chunkId.fill(0);
+        chunkId.set(fileHash, 0);
 
-        callback({ state: 'name', value: chunkIdToString(chunkId) });
+        callback({
+            state: 'firstChunkId',
+            value: {
+                firstChunkId: chunkIdToString(chunkId),
+                totalChunks: chunks.length
+            }
+        });
 
         for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
             const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
             payload[0] = enums.client.actions.broadcast_chunk;
             
+            chunkId.set(numberToUint8Array(chunkIndex, 2), chunk_id_size - 2);
+
             let cursor = 1;
             
             payload.set(chunkId, cursor);
-            cursor += 32;
-            
-            payload.set(numberToUint8Array(chunkIndex, 2), cursor);
-            cursor += 2;
+            cursor += chunk_id_size;
             
             payload.set(numberToUint8Array(chunks.length, 2), cursor);
             cursor += 2;
@@ -134,13 +141,14 @@ export class HiveCommunication {
         });
     }
 
-    async isFilePresentInHive(chunkId: string) {
+    async isChunkPresentInHive(chunkId: string) {
         const payload = new Uint8Array(1 + chunk_id_size);
         payload[0] = enums.client.questions.total_clients_having_chunk;
+
         payload.set(stringToChunkId(chunkId), 1);
         this.#ws?.send(payload);
         const answer = await this.waitForAnswer(payload[0]);
-        console.log("SERVER ANSWER TO QUESTION", answer);
+        
         return uint8ArrayToNumber(answer);
     }
 

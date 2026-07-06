@@ -12,11 +12,11 @@ export function isQuestion(type: number) {
 
 export const clientQuestionsHandlers = {
     async [enums.client.questions.total_clients_having_chunk](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
-        log("total_clients_having_chunk");
 
         const broadcast = new Uint8Array(1 + chunk_id_size);
         broadcast[0] = enums.server.questions.have_chunk;
-        broadcast.set(buffer.subarray(1));
+        broadcast.set(buffer.subarray(1), 1);
+        
         allClients.forEach(client => client.send(broadcast));
         
         // Wait ~1 sec before sending answer so clients have time to answer
@@ -26,6 +26,7 @@ export const clientQuestionsHandlers = {
         answer[0] = enums.client.questions.total_clients_having_chunk;
         const chunkId = chunkIdToString(buffer.subarray(1));
         answer.set(numberToUint8Array([...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length, 3), 1);
+        
         wsClient.send(answer);
     }
 };

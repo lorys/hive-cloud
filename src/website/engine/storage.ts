@@ -56,7 +56,7 @@ export class HiveStorage {
         if (this.findChunkId(chunkId))
             throw { error: 101, message: "Index already exists" };
         const firstFree = this.#indexes.findIndex(e => !e);
-        console.log({ firstFree });
+
         this.#indexes[firstFree] = chunkId;
         return firstFree;
     }

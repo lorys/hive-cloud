@@ -71,19 +71,19 @@ const start = async () => {
             console.log("Manage user file error", err);
         }
         managingUsersFiles = false;
-    }, 500);
+    }, 250);
 
     let checkingUsersFiles = false;
-    setInterval(() => {
+    setInterval(async () => {
         if (checkingUsersFiles) return;
         checkingUsersFiles = true;
         try {
-            checkUserFiles();
+            await checkUserFiles();
         } catch (err) {
             console.log("Manage user file error", err);
         }
         checkingUsersFiles = false;
-    }, 500);
+    }, 750);
 
     let redundancyCheckRunning = false;
 
@@ -93,10 +93,10 @@ const start = async () => {
         try {
             await chunkRedundancy(hive.storage, hive.communication);
         } catch (err) {
-            console.log("Redundancy check error", err);
+            
         }
         redundancyCheckRunning = false;
-    }, 250);
+    }, 500);
 }
 
 byId("agreed").onclick = start;

@@ -13,13 +13,11 @@ export async function actionsFromServerHandler(payload: Uint8Array, hive: HiveCo
     const actions: Record<number, ChunkAction> = {
         // Do we have a chunk ? If so, send it
         async [enums.server.actions.store_chunk](args: Uint8Array) {
-            console.log("Received store chunk action", args);
             const chunkIndexArr = args.subarray(0, chunk_id_size);
 
             try {
                 const chunk = await hive.storeChunk(chunkIdToString(chunkIndexArr), args.subarray(chunk_id_size));
             } catch (e) {
-                console.log("Error while storing chunk", e);
             }
             return null;
         },

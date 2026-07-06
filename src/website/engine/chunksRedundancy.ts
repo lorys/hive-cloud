@@ -9,8 +9,7 @@ export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunicat
 
     for (let a = 0; a < chunksStored.length; a++) {
         const chunkId = chunksStored[a];
-
-        const holders = await hive.isFilePresentInHive(chunkId);
+        const holders = await hive.isChunkPresentInHive(chunkId);
         
         if (holders < chunk_redundancy) {
             await hive.broadcastChunk(chunkId);
@@ -41,7 +40,7 @@ export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunicat
 
         //         const checkChunkId = chunkIdToString(buildChunkId);
 
-        //         const holders = await hive.isFilePresentInHive(checkChunkId);
+        //         const holders = await hive.isChunkPresentInHive(checkChunkId);
         //         console.log({ holders });
         //         if (!holders) {
         //             storage.deleteChunk(checkChunkId);

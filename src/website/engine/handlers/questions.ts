@@ -1,5 +1,6 @@
 import { HiveCommunication } from "../communication";
 import { enums, chunk_size } from "hiveCodes";
+import { chunkIdToString } from "commons";
 
 type ChunkAction = (args: Uint8Array) => Promise<Uint8Array | null>;
 
@@ -12,7 +13,7 @@ export async function questionsFromServerHandler(payload: Uint8Array, hive: Hive
     const questions: Record<number, ChunkAction> = {
         // Do we have a chunk ? If so, send it
         async [enums.server.questions.have_chunk_and_send](args: Uint8Array) {
-            const wantedChunkIndex = new DataView(args.buffer, 1, args.byteLength).getUint32(0, true);
+            const wantedChunkIndex = chunkIdToString(args);
             try {
                 const chunk = await hive.pullChunk(wantedChunkIndex);
                 const answer = new Uint8Array(4 + chunk_size);
@@ -27,15 +28,13 @@ export async function questionsFromServerHandler(payload: Uint8Array, hive: Hive
 
         // Do we have a chunk ? yes or no
         async [enums.server.questions.have_chunk](args: Uint8Array) {
-            const wantedChunkIndex = new DataView(args.buffer, 1, args.byteLength).getUint32(0, true);
+            // args is the chunk id the server is asking about.
+            const chunkId = chunkIdToString(args);
             try {
-                const chunk = await hive.pullChunk(wantedChunkIndex);
-                const answer = new Uint8Array(4 + chunk_size);
-                answer.set(args.subarray(0,3));
-                answer.set(chunk, 4);
-                return answer;
+                await hive.pullChunk(chunkId); // throws if we don't hold it
+                return args; // echo the id back so the server registers us as a holder
             } catch (e) {
-
+                console.error("Error", e);
             }
             return null;
         },
