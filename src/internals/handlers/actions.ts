@@ -36,12 +36,11 @@ export const clientActionsHandlers = {
         askClientPayload[0] = enums.server.questions.have_chunk_and_send;
         askClientPayload.set(wantedChunkId, 1);
 
-        validatedChunks[chunkIdToString(wantedChunkId)] = false;
-
+        validatedChunks[wantedChunkIdStr] = false;
 
         // We don't wait more than 20 sec to get a chunk.
         const waitChunkDeadline = setTimeout(() => {
-            delete validatedChunks[chunkIdToString(wantedChunkId)];
+            delete validatedChunks[wantedChunkIdStr];
         }, 20_000);
 
         allClients.forEach(client => {
@@ -63,11 +62,12 @@ export const clientActionsHandlers = {
         }
 
         clearTimeout(waitChunkDeadline);
-        
+
         const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
         payload[0] = enums.client.actions.send_chunk;
         payload.set(wantedChunkId, 1);
         payload.set(wantedChunk, 1 + chunk_id_size);
+        
 
         wsClient.send(payload);
 

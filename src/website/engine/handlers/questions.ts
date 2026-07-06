@@ -1,5 +1,5 @@
 import { HiveCommunication } from "../communication";
-import { enums, chunk_size } from "hiveCodes";
+import { enums, chunk_size, chunk_infos_size, chunk_id_size } from "hiveCodes";
 import { chunkIdToString } from "commons";
 
 type ChunkAction = (args: Uint8Array) => Promise<Uint8Array | null>;
@@ -16,9 +16,9 @@ export async function questionsFromServerHandler(payload: Uint8Array, hive: Hive
             const wantedChunkIndex = chunkIdToString(args);
             try {
                 const chunk = await hive.pullChunk(wantedChunkIndex);
-                const answer = new Uint8Array(4 + chunk_size);
-                answer.set(args.subarray(0,3));
-                answer.set(chunk, 4);
+                const answer = new Uint8Array(chunk_infos_size + chunk_size);
+                answer.set(args, 0);
+                answer.set(chunk, chunk_id_size);
                 return answer;
             } catch (e) {
 
