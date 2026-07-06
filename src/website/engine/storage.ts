@@ -28,7 +28,6 @@ export class HiveStorage {
 
     static async getFileHash(file: File): Promise<Uint8Array> {
         const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
-        console.log({ digest, uintarray: new Uint8Array(digest) });
         return new Uint8Array(digest);
     }
 
@@ -52,7 +51,6 @@ export class HiveStorage {
     }
 
     #addIndex(chunkId: string) {
-        console.log("Storing chunkId");
         if (this.findChunkId(chunkId))
             throw { error: 101, message: "Index already exists" };
         const firstFree = this.#indexes.findIndex(e => !e);

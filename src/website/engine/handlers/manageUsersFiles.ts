@@ -22,7 +22,7 @@ function updateFileHolders(fileId: string, holders: number) {
     const button = actionButton(fileId);
     if (button) {
         button.innerHTML = `⬇️ Download`;
-        button.onclick = () => hive.communication?.downloadFileFromHive(fileId);
+        button.onclick = () => hive.communication?.downloadFileFromHive(fileId, usersChunkIds[fileId].totalChunks);
     }
 }
 
@@ -40,7 +40,6 @@ function markFileLost(fileId: string) {
 
 // Only ever triggered by the user clicking "Delete" on a lost file.
 function deleteUserFile(fileId: string) {
-    console.log("🗑️ user deleted lost file", fileId);
     localStorage.removeItem("hive_" + fileId);
     delete usersChunkIds[fileId];
     holderElement(fileId)?.closest(".link")?.remove();
@@ -71,7 +70,7 @@ function renderUserFiles() {
         holdersEl.dataset.holders = chunk;
         buttonEl.innerHTML = `⬇️ Download`;
         buttonEl.dataset.action = chunk;
-        buttonEl.onclick = () => hive.communication?.downloadFileFromHive(chunk);
+        buttonEl.onclick = () => hive.communication?.downloadFileFromHive(chunk, usersChunkIds[chunk]?.totalChunks);
 
         el.classList.add('link');
         el.append(nameEl, holdersEl, buttonEl);
@@ -84,8 +83,6 @@ function renderUserFiles() {
 }
 
 export function manageUserFiles() {
-    console.log("mange user files");
-
     const locallyStoredFiles: { [key: string]: StoredFile } = Object.keys(localStorage)
         .filter(e => e.startsWith("hive_"))
         .reduce((acc, e) => ({ ...acc, [e.replace("hive_", "")]: JSON.parse(localStorage.getItem(e) as string) }), {});
@@ -111,7 +108,6 @@ async function checkFileHolders(chunkId: string) {
     let minHolders = Infinity;
     
     for (let index = 0; index < totalChunks; index++) {
-        console.log({usersChunkIds});
         let holders: number;
         try {
             const wantedChunkId = new Uint8Array(chunk_id_size);

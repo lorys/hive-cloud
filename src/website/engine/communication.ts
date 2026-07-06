@@ -151,7 +151,7 @@ export class HiveCommunication {
         return uint8ArrayToNumber(answer);
     }
 
-    async downloadFileFromHive(chunkId: string) {
+    async downloadFileFromHive(chunkId: string, totalChunks: number) {
         console.log("download file");
     }
 
