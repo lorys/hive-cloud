@@ -152,7 +152,13 @@ export class HiveCommunication {
     }
 
     async downloadFileFromHive(chunkId: string, totalChunks: number) {
-        console.log("download file");
+        const payload = new Uint8Array(1 + chunk_id_size);
+        payload[0] = enums.client.actions.send_chunk;
+        payload.set(stringToChunkId(chunkId).subarray(0, chunk_id_size - 2), 1);
+        for (let a = 0; a < totalChunks; a++) {
+            payload.set(numberToUint8Array(a, 2), 1 + chunk_id_size - 2);
+            const chunk = this.#ws!.send(payload);
+        }
     }
 
     async sendInfos() {
