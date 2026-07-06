@@ -89,13 +89,13 @@ Take a look at the [hiveCodesAndConfig.ts](https://github.com/lorys/hive-cloud/b
 
 #### The server can also ask different **actions** :
 
-- `0x11` : Store this chunk.
+- `0x10` : Store this chunk.
 
 The server doesn't expect any answer from the client when asking for an action. It will know the state of a given chunk when it'll ask for it.
 
 #### The server communicates informations about Hive's current state
 
-- `0x21` : Current Hive state: total storage capacity, total used capacity, total clients connected
+- `0x20` : Current Hive state: total storage capacity, total used capacity, total clients connected
 
 ### > Client's **questions** and **actions**
 
@@ -105,16 +105,16 @@ Since the client has 2 concerns :
 
 #### Client's questions
 
-- `0x37` : How many clients stores this chunk `<id>` ?
-- `0x38` : Can we store a file of `N` bytes named `<hash>` ?
+- `0x30` : How many clients stores this chunk `<id>` ?
 
 #### Client's actions
 
-- `0x49` : broadcast a chunk. In case the chunk's redundancy is too low.
+- `0x40` : broadcast this chunk.
+- `0x41` : Send me this chunk.
 
 ### Client's informations
 
-- `0x51` : The client also sends informations to the server about the current capacity and usage.
+- `0x50` : The client also sends informations to the server about the current capacity and usage.
 
 ## Chunk's format during transfers
 
@@ -134,5 +134,5 @@ These data allow us to follow a file and know what part is missing.
 
 A file can have 65 535 chunks so a single file cannot exceed **~65 gigabytes**.
 
-This exact format, explained above, is used only during transfers between servers and clients (codes `0x00`, `0x11` and `0x49`).
+This exact format, explained above, is used only during transfers between servers and clients (codes `0x00`, `0x10` and `0x40`).
 Clients have a different approach when it comes to storing chunks.
