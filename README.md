@@ -143,6 +143,7 @@ But we can only process it completely if we have the informations needed (in thi
 - **2 bytes** : current chunk's index.
 - **2 bytes** : total chunks for this file
 - **5 bytes** : total bytes in this file
+- **1 byte** : whether the file was encrypted at upload (`1`) or not (`0`)
 - **1 048 576 bytes** : the entier chunk (filled with zeros if the chunk is smaller than the set size).
 
 > chunkId is `34 bytes` : file's entire hash + current chunk's index
