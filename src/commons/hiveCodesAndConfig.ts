@@ -1,7 +1,7 @@
 export const chunk_size = 1_048_576;
-export const chunk_infos_size = 41;
 export const chunk_header_size = 7;
 export const chunk_id_size = 34;
+export const chunk_infos_size = chunk_header_size + chunk_id_size;
 export const chunk_state_treshold = 5;
 
 export const chunk_redundancy = 10;

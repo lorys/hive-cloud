@@ -19,10 +19,10 @@ export function relayReceivedChunk(chunk: Uint8Array) {
     // We never exceed ~1Gio of chunks in RAM
     if (Object.keys(chunksReceived).length > 1_000) return;
 
-    const chunkId = chunkIdToString(chunk.subarray(0,chunk_id_size));
+    const chunkId = chunkIdToString(chunk.subarray(0, chunk_id_size));
 
     // We don't check chunks if nobody asked for it.
-    if (!validatedChunks[chunkId]) return;
+    if (validatedChunks[chunkId] === undefined) return;
 
     if (!chunksReceived[chunkId]) {
         chunksReceived[chunkId] = {

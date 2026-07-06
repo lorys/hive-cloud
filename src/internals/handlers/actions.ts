@@ -28,7 +28,7 @@ export const clientActionsHandlers = {
             askedTo++;
         });
     },
-    async [enums.client.actions.send_chunk](buffer: Uint8Array, _wsClient: WebSocket, allClients: Set<WebSocket>) {
+    async [enums.client.actions.send_chunk](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
         const askClientPayload = new Uint8Array(1 + chunk_id_size);
         const wantedChunkId = buffer.subarray(1, 1 + chunk_id_size);
         const wantedChunkIdStr = chunkIdToString(wantedChunkId);
@@ -39,6 +39,11 @@ export const clientActionsHandlers = {
         validatedChunks[chunkIdToString(wantedChunkId)] = false;
 
 
+        // We don't wait more than 20 sec to get a chunk.
+        const waitChunkDeadline = setTimeout(() => {
+            delete validatedChunks[chunkIdToString(wantedChunkId)];
+        }, 20_000);
+
         allClients.forEach(client => {
             if (client.readyState !== OPEN || !client.hive.hasChunks?.has(wantedChunkIdStr)) return;
 
@@ -46,21 +51,26 @@ export const clientActionsHandlers = {
         });
 
         const wantedChunk: Uint8Array | false = await new Promise(async res => {
-            while (validatedChunks[chunkIdToString(buffer.subarray(1))] === false) {
-                await new Promise(t => setTimeout(t, 0));
+            while (validatedChunks[wantedChunkIdStr] === false) {
+                await new Promise(t => setTimeout(t, 100));
             }
-            res(validatedChunks[chunkIdToString(buffer.subarray(1))] || false);
+            res(validatedChunks[wantedChunkIdStr] || false);
         });
 
         // Chunk validation timed out
         if (!wantedChunk) {
             return;
         }
-    
+
+        clearTimeout(waitChunkDeadline);
+        
         const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
         payload[0] = enums.client.actions.send_chunk;
         payload.set(wantedChunkId, 1);
         payload.set(wantedChunk, 1 + chunk_id_size);
-        _wsClient.send(payload);
+
+        wsClient.send(payload);
+
+        delete validatedChunks[wantedChunkIdStr];
     }
 };
