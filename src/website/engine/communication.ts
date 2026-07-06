@@ -6,7 +6,7 @@ import { numberToUint8Array, stringToChunkId, uint8ArrayToNumber } from "commons
 import { actionsFromServerHandler } from "./handlers/actions.js";
 import { chunkIdToString } from "commons";
 
-type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void) | null; };
+type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void)[]; };
 
 export class HiveCommunication {
     #ws: WebSocket | null = null;
@@ -33,7 +33,7 @@ export class HiveCommunication {
             actionsFromServerHandler(payload, this);
 
             if (this.#waitingForAnswer[payload[0]]) {
-                this.#waitingForAnswer[payload[0]]?.(payload.subarray(1));
+                this.#waitingForAnswer[payload[0]].map(fn => fn?.(payload.subarray(1)));
 
                 // reset waitingForAnswer
                 delete this.#waitingForAnswer[payload[0]];
@@ -124,11 +124,13 @@ export class HiveCommunication {
     waitForAnswer(type: number): Promise<Uint8Array> {
         return new Promise((resolve, reject) => {
             const t = setTimeout(() => reject("Answer took too long"), 4000);
-            this.#waitingForAnswer[type] = (...args) => {
+            if (!this.#waitingForAnswer[type]) {
+                this.#waitingForAnswer[type] = [];
+            }
+            this.#waitingForAnswer[type].push((...args) => {
                 resolve(...args);
                 clearTimeout(t);
-                delete this.#waitingForAnswer[type];
-            };
+            });
         });
     }
 

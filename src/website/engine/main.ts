@@ -3,7 +3,7 @@ import { HiveCommunication } from "./communication.js";
 import { handleFileUpload, copyChunkId } from "./ui.js";
 import { byId } from "./utils.js";
 import { chunk_size } from "hiveCodes";
-import { manageUserFiles } from "./handlers/manageUsersFiles.js";
+import { checkUserFiles, manageUserFiles } from "./handlers/manageUsersFiles.js";
 import { chunkRedundancy } from "./chunksRedundancy.js";
 
 export interface HiveState {
@@ -62,8 +62,6 @@ const start = async () => {
     }, 1000);
 
     let managingUsersFiles = false;
-
-
     setInterval(() => {
         if (managingUsersFiles) return;
         managingUsersFiles = true;
@@ -73,6 +71,18 @@ const start = async () => {
             console.log("Manage user file error", err);
         }
         managingUsersFiles = false;
+    }, 500);
+
+    let checkingUsersFiles = false;
+    setInterval(() => {
+        if (checkingUsersFiles) return;
+        checkingUsersFiles = true;
+        try {
+            checkUserFiles();
+        } catch (err) {
+            console.log("Manage user file error", err);
+        }
+        checkingUsersFiles = false;
     }, 500);
 
     let redundancyCheckRunning = false;

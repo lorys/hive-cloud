@@ -13,7 +13,7 @@ function renderUserFiles() {
     let newRender: Node[] = [];
     
     Object.keys(usersChunkIds).forEach(chunk => {
-        const sanityCheck = /^[a-zA-Z0-9]+$/;
+        const sanityCheck = /^[a-zA-Z0-9\,]+$/;
         console.log("sanityCheck", chunk.match(sanityCheck), chunk);
         if (chunk.match(sanityCheck) === null) {
             return;
@@ -54,4 +54,8 @@ export function manageUserFiles() {
     usersChunkIds = locallyStoredFiles;
 
     renderUserFiles();
+}
+
+export function checkUserFiles() {
+    
 }
