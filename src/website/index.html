@@ -453,6 +453,39 @@
             color: black;
             transition: 0.5s;
         }
+
+        .download-boxes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            max-height: 220px;
+            overflow-y: auto;
+            margin: 18px 0;
+        }
+        .download-box {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            background: linear-gradient(165deg, var(--honey-light), var(--honey));
+            border: 1px solid var(--stroke);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+        .download-box.found {
+            background: transparent;
+            border-color: transparent;
+            box-shadow: none;
+            animation: pop 0.3s ease;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.4); opacity: 0.3; }
+            60% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -525,6 +558,19 @@
             <h2>Password <input style="width: 220px;" type="password" id="encryptionPassword" placeholder="Choose a password" /></h2>
             <button id="encryptYes">🔒 Encrypt &amp; upload</button>
             <button id="encryptNo" class="secondary">Upload without encryption</button>
+        </div>
+    </div>
+
+    <div id="download" class="modal" style="display: none;">
+        <div>
+            <h1>Downloading from the Hive 🐝</h1>
+            <div id="download_boxes" class="download-boxes"></div>
+            <h3 id="download_status"></h3>
+            <div id="download_password" style="display: none;">
+                <h2>Password <input style="width: 220px;" type="password" id="downloadPassword" placeholder="File password" /></h2>
+                <button id="downloadDecrypt">🔓 Decrypt &amp; download</button>
+            </div>
+            <button id="close_download" class="secondary">close</button>
         </div>
     </div>
 

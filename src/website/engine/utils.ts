@@ -30,6 +30,32 @@ export async function encryptChunk(file: File, password: string): Promise<File> 
     return new File([packaged], file.name + ".enc", { type: "application/octet-stream" });
 }
 
+// Inverse of encryptChunk. Layout: [ salt(16) | iv(12) | ciphertext+tag ].
+// Throws if the password is wrong (AES-GCM tag mismatch).
+export async function decryptFile(data: Uint8Array<ArrayBuffer>, password: string): Promise<Uint8Array<ArrayBuffer>> {
+    const salt = data.subarray(0, 16);
+    const iv = data.subarray(16, 28);
+    const ciphertext = data.subarray(28);
+
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(password),
+        "PBKDF2",
+        false,
+        ["deriveKey"]
+    );
+    const key = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+    );
+
+    const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+    return new Uint8Array(plaintext);
+}
+
 export function byId<T extends HTMLElement = HTMLElement>(id: string): T {
     const el = document.getElementById(id);
     if (!el) throw new Error(`Element #${id} not found`);

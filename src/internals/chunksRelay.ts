@@ -3,76 +3,77 @@ import { chunk_header_size, chunk_id_size, chunk_size, chunk_state_treshold } fr
 
 const chunksReceived: {
     [key: string]: {
-        same: number,
-        different: number,
-        chunk: null | Uint8Array,
+        reference: null | Uint8Array, // first chunk seen; the candidate we vote on
+        agree: number,                // responders whose bytes match the reference
+        disagree: number,             // responders whose bytes differ from the reference
+        responders: number,           // total responders so far
+        expected: number,             // how many holders the server asked
         timeout: NodeJS.Timeout
     }
-} = {
-
-};
+} = {};
 
 export const validatedChunks: { [key: string]: Uint8Array | false } = {};
 
+// Called by the download handler once it knows how many holders it asked, so the
+// relay can finalise as soon as they've all answered (instead of blocking until
+// chunk_state_treshold holders exist).
+export function expectChunk(chunkId: string, holders: number) {
+    // We never exceed ~1Gio of chunks in RAM.
+    if (chunksReceived[chunkId] || Object.keys(chunksReceived).length > 1_000) return;
+
+    chunksReceived[chunkId] = {
+        reference: null,
+        agree: 0,
+        disagree: 0,
+        responders: 0,
+        expected: holders,
+        // No matter what, a chunk never lives more than 10 seconds in RAM.
+        timeout: setTimeout(() => { delete chunksReceived[chunkId]; }, 10_000)
+    };
+}
+
 export function relayReceivedChunk(chunk: Uint8Array) {
-
-    // We never exceed ~1Gio of chunks in RAM
-    if (Object.keys(chunksReceived).length > 1_000) return;
-
     const chunkId = chunkIdToString(chunk.subarray(0, chunk_id_size));
 
-    // We don't check chunks if nobody asked for it.
-    if (validatedChunks[chunkId] === undefined) return;
+    // Only collect while a download is actually waiting for this chunk.
+    if (validatedChunks[chunkId] !== false) return;
 
-    if (!chunksReceived[chunkId]) {
-        chunksReceived[chunkId] = {
-            same: 0,
-            different: 0,
-            chunk: null,
-            // No matter what, a chunk never lives more than 10 seconds in RAM.
-            timeout: setTimeout(() => {
-                if (chunksReceived[chunkId]) {
-                    delete chunksReceived[chunkId];
-                }
-            }, 10_000)
-        };
-    }
-
+    const entry = chunksReceived[chunkId];
+    if (!entry) return; // nobody asked for it
 
     const strippedChunk = chunk.subarray(chunk_id_size);
+    entry.responders++;
 
-    if (chunksReceived[chunkId].chunk === null) {
-        chunksReceived[chunkId].chunk = strippedChunk;
-        return;
-    }
-
-    let isDifferent = false;
-    for (let a = 0; a < chunk_header_size + chunk_size; a++) {
-        if (chunksReceived[chunkId].chunk[a] !== strippedChunk[a]) {
-            isDifferent = true;
-            break;
-        }
-    }
-
-    if (isDifferent) {
-        chunksReceived[chunkId].different++;
+    if (entry.reference === null) {
+        entry.reference = strippedChunk;
+        entry.agree = 1;
     } else {
-        chunksReceived[chunkId].same++;
+        let isDifferent = false;
+        for (let a = 0; a < chunk_header_size + chunk_size; a++) {
+            if (entry.reference[a] !== strippedChunk[a]) {
+                isDifferent = true;
+                break;
+            }
+        }
+
+        if (isDifferent) {
+            entry.disagree++;
+            // A different chunk won the vote: switch to it and start over.
+            if (entry.disagree > entry.agree) {
+                entry.reference = strippedChunk;
+                entry.agree = 1;
+                entry.disagree = 0;
+            }
+        } else {
+            entry.agree++;
+        }
     }
 
-    if (chunksReceived[chunkId].same+chunksReceived[chunkId].different >= chunk_state_treshold) {
-        if (chunksReceived[chunkId].same > chunksReceived[chunkId].different) {
-            validatedChunks[chunkId] = chunksReceived[chunkId].chunk;
-
-            clearTimeout(chunksReceived[chunkId].timeout);
-            delete chunksReceived[chunkId];
-        } else if (chunksReceived[chunkId].different > chunksReceived[chunkId].same && isDifferent) {
-            chunksReceived[chunkId] = {
-                same: 0,
-                different: 0,
-                chunk: strippedChunk,
-                timeout: chunksReceived[chunkId].timeout
-            };
-        }
+    // Validate once a chunk has a decisive lead, or once every holder has answered.
+    const decided = entry.agree >= chunk_state_treshold || entry.responders >= entry.expected;
+    if (decided && entry.reference && entry.agree >= entry.disagree) {
+        validatedChunks[chunkId] = entry.reference;
+        clearTimeout(entry.timeout);
+        delete chunksReceived[chunkId];
     }
 }

@@ -1,6 +1,7 @@
 import { chunkIdToString, numberToUint8Array, stringToChunkId } from "commons";
 import { chunk_id_size } from "hiveCodes";
 import { hive } from "../main";
+import { startDownload } from "./downloadFile.js";
 
 type StoredFile = { name: string; totalChunks: number };
 
@@ -22,7 +23,7 @@ function updateFileHolders(fileId: string, holders: number) {
     const button = actionButton(fileId);
     if (button) {
         button.innerHTML = `⬇️ Download`;
-        button.onclick = () => hive.communication?.downloadFileFromHive(fileId, usersChunkIds[fileId].totalChunks);
+        button.onclick = () => startDownload(fileId, usersChunkIds[fileId].name, usersChunkIds[fileId].totalChunks);
     }
 }
 
@@ -70,7 +71,7 @@ function renderUserFiles() {
         holdersEl.dataset.holders = chunk;
         buttonEl.innerHTML = `⬇️ Download`;
         buttonEl.dataset.action = chunk;
-        buttonEl.onclick = () => hive.communication?.downloadFileFromHive(chunk, usersChunkIds[chunk]?.totalChunks);
+        buttonEl.onclick = () => startDownload(chunk, usersChunkIds[chunk]?.name, usersChunkIds[chunk]?.totalChunks);
 
         el.classList.add('link');
         el.append(nameEl, holdersEl, buttonEl);

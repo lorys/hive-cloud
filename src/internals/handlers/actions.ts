@@ -2,7 +2,7 @@ import { WebSocket } from '@fastify/websocket';
 import { chunkIdToString } from 'commons';
 import { categories, chunk_id_size, chunk_infos_size, chunk_size, chunk_start_redundancy, enums } from 'hiveCodes';
 import { OPEN } from 'ws';
-import { validatedChunks } from '../chunksRelay';
+import { expectChunk, validatedChunks } from '../chunksRelay';
 
 const actionsSet = new Set(Object.values(enums.client.actions));
 
@@ -43,11 +43,22 @@ export const clientActionsHandlers = {
             delete validatedChunks[wantedChunkIdStr];
         }, 20_000);
 
+        let holders = 0;
         allClients.forEach(client => {
             if (client.readyState !== OPEN || !client.hive.hasChunks?.has(wantedChunkIdStr)) return;
 
             client.send(askClientPayload);
+            holders++;
         });
+
+        // Nobody holds it: don't wait for an answer that will never come.
+        if (holders === 0) {
+            clearTimeout(waitChunkDeadline);
+            delete validatedChunks[wantedChunkIdStr];
+            return;
+        }
+
+        expectChunk(wantedChunkIdStr, holders);
 
         const wantedChunk: Uint8Array | false = await new Promise(async res => {
             while (validatedChunks[wantedChunkIdStr] === false) {

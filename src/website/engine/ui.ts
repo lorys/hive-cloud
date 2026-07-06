@@ -34,7 +34,7 @@ export async function handleFileUpload(file: File) {
     modal.style.display = "block";
     passwordInput.focus();
 
-    const fileToUpload = await new Promise<File>((resolve) => {
+    const { file: fileToUpload, encrypted } = await new Promise<{ file: File, encrypted: boolean }>((resolve) => {
         const close = () => {
             modal.style.display = "none";
             yesButton.onclick = null;
@@ -48,15 +48,15 @@ export async function handleFileUpload(file: File) {
                 return;
             }
             yesButton.innerHTML="Encryption ...";
-            const encrypted = await encryptChunk(file, password);
+            const encryptedFile = await encryptChunk(file, password);
             yesButton.innerHTML="Encryption done ✅";
-            resolve(encrypted);
+            resolve({ file: encryptedFile, encrypted: true });
             close();
         };
 
         noButton.onclick = () => {
             close();
-            resolve(file);
+            resolve({ file, encrypted: false });
         };
     });
 
@@ -76,7 +76,7 @@ export async function handleFileUpload(file: File) {
         totalChunks: null
     };
 
-    await hive.communication?.uploadFileToHive(fileToUpload, (payload) => {
+    await hive.communication?.uploadFileToHive(fileToUpload, encrypted, (payload) => {
         const { state } = payload;
 
         if (state === 'splitting') {

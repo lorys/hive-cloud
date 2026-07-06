@@ -94,6 +94,7 @@ export class HiveStorage {
             currentIndex: uint8ArrayToNumber(stringToChunkId(chunkId).subarray(-2)),
             totalChunks: uint8ArrayToNumber(chunk.subarray(0, 2)),
             totalBytes: uint8ArrayToNumber(chunk.subarray(2, 7)),
+            encrypted: chunk[7] === 1,
         };
     }
 

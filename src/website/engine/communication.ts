@@ -8,10 +8,20 @@ import { chunkIdToString } from "commons";
 
 type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void)[]; };
 
+type PendingDownload = {
+    totalChunks: number;
+    chunks: (Uint8Array | undefined)[]; // index -> header + data
+    received: number;
+    onChunk: (index: number) => void;
+    resolve: (result: { bytes: Uint8Array<ArrayBuffer>; encrypted: boolean } | null) => void;
+    timeout: ReturnType<typeof setTimeout>;
+};
+
 export class HiveCommunication {
     #ws: WebSocket | null = null;
     #storageInstance: HiveStorage;
     #waitingForAnswer: PendingAnswer = {};
+    #downloads: Map<string, PendingDownload> = new Map();
 
     constructor(storage: HiveStorage) {
         this.#storageInstance = storage;
@@ -31,6 +41,10 @@ export class HiveCommunication {
             await questionsFromServerHandler(payload, this);
             await informationsFromServerHandler(payload, this);
             await actionsFromServerHandler(payload, this);
+
+            if (payload[0] === enums.client.actions.send_chunk) {
+                this.#receiveDownloadChunk(payload);
+            }
 
             if (this.#waitingForAnswer[payload[0]]) {
                 await Promise.allSettled(this.#waitingForAnswer[payload[0]].map(fn => fn?.(payload.subarray(1))));
@@ -67,7 +81,7 @@ export class HiveCommunication {
         return this.#storageInstance.pullChunk(index);
     }
 
-    async uploadFileToHive(file: File, callback: (payload: { state: 'firstChunkId', value: { firstChunkId: string, totalChunks: number } } | { state: 'splitting' | 'broadcasting', value: number } | { state: 'no_space' } ) => void) {
+    async uploadFileToHive(file: File, encrypted: boolean, callback: (payload: { state: 'firstChunkId', value: { firstChunkId: string, totalChunks: number } } | { state: 'splitting' | 'broadcasting', value: number } | { state: 'no_space' } ) => void) {
         if (!file) return;
 
         if (!this.#canUploadFileToHive(file)) {
@@ -106,6 +120,9 @@ export class HiveCommunication {
             
             payload.set(numberToUint8Array(file.size, 5), cursor);
             cursor += 5;
+
+            payload[cursor] = encrypted ? 1 : 0;
+            cursor += 1;
 
             payload.set(chunks[chunkIndex], cursor);
             
@@ -151,14 +168,69 @@ export class HiveCommunication {
         return uint8ArrayToNumber(answer);
     }
 
-    async downloadFileFromHive(chunkId: string, totalChunks: number) {
-        const payload = new Uint8Array(1 + chunk_id_size);
-        payload[0] = enums.client.actions.send_chunk;
-        payload.set(stringToChunkId(chunkId).subarray(0, chunk_id_size - 2), 1);
-        for (let a = 0; a < totalChunks; a++) {
-            payload.set(numberToUint8Array(a, 2), 1 + chunk_id_size - 2);
-            const chunk = this.#ws!.send(payload);
+    // Requests every chunk of a file, collects the deliveries, and assembles the
+    // original bytes. `onChunk` fires for each chunk that arrives (for UI feedback).
+    // Resolves null if the whole file didn't arrive within the timeout.
+    downloadFileFromHive(
+        firstChunkId: string,
+        totalChunks: number,
+        onChunk: (index: number) => void
+    ): Promise<{ bytes: Uint8Array<ArrayBuffer>; encrypted: boolean } | null> {
+        const hash = stringToChunkId(firstChunkId).subarray(0, chunk_id_size - 2);
+        const key = chunkIdToString(hash);
+
+        return new Promise((resolve) => {
+            this.#downloads.set(key, {
+                totalChunks,
+                chunks: new Array(totalChunks),
+                received: 0,
+                onChunk,
+                resolve,
+                timeout: setTimeout(() => {
+                    this.#downloads.delete(key);
+                    resolve(null);
+                }, 30_000)
+            });
+
+            const payload = new Uint8Array(1 + chunk_id_size);
+            payload[0] = enums.client.actions.send_chunk;
+            payload.set(hash, 1);
+            for (let a = 0; a < totalChunks; a++) {
+                payload.set(numberToUint8Array(a, 2), 1 + chunk_id_size - 2);
+                this.#ws?.send(payload);
+            }
+        });
+    }
+
+    #receiveDownloadChunk(payload: Uint8Array) {
+        const id = payload.subarray(1, 1 + chunk_id_size);
+        const key = chunkIdToString(id.subarray(0, chunk_id_size - 2));
+        const download = this.#downloads.get(key);
+        if (!download) return;
+
+        const index = uint8ArrayToNumber(id.subarray(chunk_id_size - 2));
+        if (download.chunks[index]) return; // already collected
+
+        download.chunks[index] = payload.subarray(1 + chunk_id_size); // header + data
+        download.received++;
+        download.onChunk(index);
+
+        if (download.received < download.totalChunks) return;
+
+        // Every chunk is in: assemble to exactly totalBytes (drops the last chunk's padding).
+        const first = download.chunks[0]!;
+        const totalBytes = uint8ArrayToNumber(first.subarray(2, 7));
+        const encrypted = first[chunk_header_size - 1] === 1;
+
+        const bytes = new Uint8Array(totalBytes);
+        for (let i = 0; i < download.totalChunks; i++) {
+            const data = download.chunks[i]!.subarray(chunk_header_size);
+            bytes.set(data.subarray(0, Math.min(chunk_size, totalBytes - i * chunk_size)), i * chunk_size);
         }
+
+        clearTimeout(download.timeout);
+        this.#downloads.delete(key);
+        download.resolve({ bytes, encrypted });
     }
 
     async sendInfos() {

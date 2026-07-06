@@ -49,7 +49,7 @@ describe('Should route properly all operations', () => {
         for (let a = 0; a < actions.length; a++) {
             const buff = new Uint8Array(1);
             const code = (enums.client.actions as any)[actions[a]!];
-            buff[0] = enums.client.actions.broadcast_chunk;
+            buff[0] = code;
             await routeWs(buff, wsClient as any, allWsClients as any);
             expect(clientActionsHandlers[code]).toHaveBeenCalled();
         }
