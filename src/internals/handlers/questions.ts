@@ -1,7 +1,6 @@
 import { WebSocket } from '@fastify/websocket';
 import { categories, chunk_id_size, enums } from 'hiveCodes';
 import { numberToUint8Array } from '../bitwise';
-import { log } from '../..';
 import { chunkIdToString } from 'commons';
 
 const questionsSet = new Set(Object.values(enums.client.questions));

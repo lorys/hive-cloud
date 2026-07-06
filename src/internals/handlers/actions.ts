@@ -1,6 +1,5 @@
 import { WebSocket } from '@fastify/websocket';
 import { categories, chunk_start_redundancy, enums } from 'hiveCodes';
-import { log } from '../..';
 
 const actionsSet = new Set(Object.values(enums.client.actions));
 
@@ -26,6 +25,6 @@ export const clientActionsHandlers = {
             client.send(payload);
             askedTo++;
         });
-        log(`Broadcasted chunk in ${Date.now() - start} ms.`);
+        log(`Broadcasted chunk to ${allClients.size} clients in ${Date.now() - start} ms.`);
     }
 };

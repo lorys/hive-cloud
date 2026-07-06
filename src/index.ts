@@ -3,10 +3,6 @@ import { serveStaticFiles } from './serveStaticFiles';
 import { handleWebsockets } from './internals/websockets';
 import { retrieveAndBroadcastHiveInformations } from './internals/informations';
 
-export const log = (...args: any) => {
-  console.log(...args);
-};
-
 const fastify = Fastify({
   logger: true
 });

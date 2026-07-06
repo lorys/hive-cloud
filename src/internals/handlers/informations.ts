@@ -2,7 +2,6 @@ import { WebSocket } from '@fastify/websocket';
 import { tmpHiveInformations } from "../informations";
 import { enums } from 'hiveCodes';
 import { uint8ArrayToNumber } from '../bitwise';
-import { log } from '../..';
 
 export function isInfos(type: number) {
     return type === enums.client.infos;

@@ -1,6 +1,5 @@
 import { WebSocket } from '@fastify/websocket';
 import { categories, enums } from 'hiveCodes';
-import { log } from '../..';
 import { chunkIdToString } from 'commons';
 
 const answersSet = new Set(Object.values(enums.server.questions));
