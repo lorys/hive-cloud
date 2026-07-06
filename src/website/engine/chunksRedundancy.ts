@@ -25,25 +25,30 @@ export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunicat
             }
         }
 
-        const chunkHeaders = storage.getChunkHeaders(chunkId);
 
-        for (let check = 0; check < chunkHeaders.totalChunks; check++) {
-            if (chunkHeaders.currentIndex !== check) { // We have this chunk, no need to check if someone else also does.
-                // Building chunk id
-                const buildChunkId = new Uint8Array(chunk_id_size);
-                buildChunkId.set(stringToChunkId(chunkId).subarray(0, chunk_id_size - 2), 0);
-                buildChunkId.set(numberToUint8Array(check, 2), chunk_id_size - 2);
+        /*
+            The issue with the following code below is that mid-upload, a file containing multiple chunks is not fully stored.
+            We need to prevent chunk's deletion before full file is uploaded
+        */
+        // const chunkHeaders = storage.getChunkHeaders(chunkId);
 
-                const checkChunkId = chunkIdToString(buildChunkId);
+        // for (let check = 0; check < chunkHeaders.totalChunks; check++) {
+        //     if (chunkHeaders.currentIndex !== check) { // We have this chunk, no need to check if someone else also does.
+        //         // Building chunk id
+        //         const buildChunkId = new Uint8Array(chunk_id_size);
+        //         buildChunkId.set(stringToChunkId(chunkId).subarray(0, chunk_id_size - 2), 0);
+        //         buildChunkId.set(numberToUint8Array(check, 2), chunk_id_size - 2);
 
-                const holders = await hive.isFilePresentInHive(checkChunkId);
-                console.log({ holders });
-                if (!holders) {
-                    storage.deleteChunk(checkChunkId);
-                    console.log("🗑️ ❌ Deleting", {checkChunkId, holders});
-                }
-            }
-        }
+        //         const checkChunkId = chunkIdToString(buildChunkId);
+
+        //         const holders = await hive.isFilePresentInHive(checkChunkId);
+        //         console.log({ holders });
+        //         if (!holders) {
+        //             storage.deleteChunk(checkChunkId);
+        //             console.log("🗑️ ❌ Deleting", {checkChunkId, holders});
+        //         }
+        //     }
+        // }
     }
 
     // For each chunks, ask how many clients has them, if total < min_chunk_redundancy we broadcast them.
