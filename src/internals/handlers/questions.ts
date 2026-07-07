@@ -19,13 +19,14 @@ export const clientQuestionsHandlers = {
         allClients.forEach(client => client.send(broadcast));
         
         // Wait ~3 sec before sending answer so clients have time to answer
-        await new Promise(res => setTimeout(res, 5_000));
+        await new Promise(res => setTimeout(res, 500));
         
-        const answer = new Uint8Array(4);
-        answer[0] = enums.client.questions.total_clients_having_chunk;
         const chunkId = chunkIdToString(buffer.subarray(1));
-        answer.set(numberToUint8Array([...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length, 3), 1);
-        
+        const answer = new Uint8Array(1 + chunk_id_size + 3);
+        answer[0] = enums.client.questions.total_clients_having_chunk;
+        answer.set(buffer.subarray(1), 1);
+        answer.set(numberToUint8Array([...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length, 3), 1 + chunk_id_size);
+
         wsClient.send(answer);
     }
 };
