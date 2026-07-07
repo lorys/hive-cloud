@@ -130,6 +130,7 @@ export class HiveCommunication {
             
             callback({ state: 'broadcasting', value: chunkIndex });
             this.#ws?.send(payload);
+            await new Promise(res => setTimeout(res, 1000));
         }
         
     }
@@ -148,7 +149,7 @@ export class HiveCommunication {
 
     waitForAnswer(type: number): Promise<Uint8Array> {
         return new Promise((resolve, reject) => {
-            const t = setTimeout(() => reject("Answer took too long"), 4000);
+            const t = setTimeout(() => reject("Answer took too long"), 10_000);
             if (!this.#waitingForAnswer[type]) {
                 this.#waitingForAnswer[type] = [];
             }
