@@ -1,0 +1,7 @@
+# Send only what the runtime image needs: the prebuilt app, the manifest/lockfile
+# (to install prod deps), and the production env file. Everything else is excluded.
+*
+!package.json
+!yarn.lock
+!dist
+!.env.production
