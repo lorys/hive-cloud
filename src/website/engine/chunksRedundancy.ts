@@ -2,6 +2,7 @@ import { chunk_id_size, chunk_redundancy } from "hiveCodes";
 import { HiveCommunication } from "./communication";
 import { HiveStorage } from "./storage";
 import { chunkIdToString, numberToUint8Array, stringToChunkId, uint8ArrayToNumber } from "commons";
+import { hiveInfos } from "./handlers/informations";
 
 export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunication) {
 
@@ -11,7 +12,7 @@ export async function chunkRedundancy(storage: HiveStorage, hive: HiveCommunicat
         const chunkId = chunksStored[a];
         const holders = await hive.isChunkPresentInHive(chunkId);
         
-        if (holders < chunk_redundancy) {
+        if (holders < chunk_redundancy && holders < hiveInfos.totalClients) {
             await hive.broadcastChunk(chunkId);
         }
         
