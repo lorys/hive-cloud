@@ -18,7 +18,7 @@ export const clientActionsHandlers = {
         payload[0] = enums.server.actions.store_chunk;
         payload.set(buffer.subarray(1), 1);
         
-        allClients.forEach(client => {
+        for (const client of allClients) {
             if (askedTo > chunk_start_redundancy) return;
             
             const clientHasCapacity = ((client.hive.totalStorage || 0) - (client.hive.usedStorage || 0)) > 0;
@@ -26,7 +26,8 @@ export const clientActionsHandlers = {
 
             client.send(payload);
             askedTo++;
-        });
+            await new Promise(res => setTimeout(res, 50));
+        }
     },
     async [enums.client.actions.send_chunk](buffer: Uint8Array, wsClient: WebSocket, allClients: Set<WebSocket>) {
         const askClientPayload = new Uint8Array(1 + chunk_id_size);
@@ -44,12 +45,14 @@ export const clientActionsHandlers = {
         }, 20_000);
 
         let holders = 0;
-        allClients.forEach(client => {
+
+        for (const client of allClients) {
             if (client.readyState !== OPEN || !client.hive.hasChunks?.has(wantedChunkIdStr)) return;
 
             client.send(askClientPayload);
             holders++;
-        });
+            await new Promise(res => setTimeout(res, 50));
+        }
 
         // Nobody holds it: don't wait for an answer that will never come.
         if (holders === 0) {
