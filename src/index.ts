@@ -1,7 +1,11 @@
 import Fastify from 'fastify'
 import { serveStaticFiles } from './serveStaticFiles';
 import { handleWebsockets } from './internals/websockets';
-import { retrieveAndBroadcastHiveInformations } from './internals/informations';
+import { broadcastHiveInformations } from './internals/informations';
+
+if (!process.env['PORT']) {
+  throw "No PORT Env";
+}
 
 const fastify = Fastify({
   logger: true
@@ -13,12 +17,12 @@ serveStaticFiles(fastify);
 
 fastify.listen({
   host: '0.0.0.0',
-  port: 3000
+  port: parseInt(process.env['PORT']!)
 }, (err) => {
   if (err) {
     throw err;
   }
   setInterval(() => {
-    retrieveAndBroadcastHiveInformations(fastify);
-  }, 1000);
+    broadcastHiveInformations(fastify);
+  }, 3000);
 });

@@ -4,30 +4,38 @@ import { join } from "node:path";
 import { readFile, stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 
-const WEBSITE_DIR = join(process.cwd(), "src/website");
-const ASSETS_DIR = join(process.cwd(), "assets");
-const INDEX_FILE = join(WEBSITE_DIR, "index.html");
-const ENGINE_FILE = join(WEBSITE_DIR, "engine.js");
+/** Resolve a required path env var against cwd, failing fast if it's unset. */
+export function envPath(name: string): string {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing env var ${name} (set it in .env.local / .env.production)`);
+    }
+    return join(process.cwd(), value);
+}
 
-let engineHashCache: { mtimeMs: number; hash: string } | null = null;
+const INDEX_FILE = envPath("WEBPAGE_PATH");
+const ENGINE_FILE = envPath("ENGINE_PATH");
+const ASSETS_DIR = envPath("ASSETS_PATH");
 
-async function getEngineVersion(): Promise<string> {
+let engineCache: { mtimeMs: number; hash: string; content: Buffer } | null = null;
+
+async function getEngine(): Promise<{ hash: string; content: Buffer }> {
     const { mtimeMs } = await stat(ENGINE_FILE);
-    if (engineHashCache?.mtimeMs === mtimeMs) {
-        return engineHashCache.hash;
+    if (engineCache?.mtimeMs === mtimeMs) {
+        return engineCache;
     }
     const content = await readFile(ENGINE_FILE);
     const hash = createHash("sha256").update(content).digest("hex").slice(0, 12);
-    engineHashCache = { mtimeMs, hash };
-    return hash;
+    engineCache = { mtimeMs, hash, content };
+    return engineCache;
 }
 
 async function renderIndex(): Promise<string> {
-    const [template, version] = await Promise.all([
+    const [template, { hash }] = await Promise.all([
         readFile(INDEX_FILE, "utf8"),
-        getEngineVersion(),
+        getEngine(),
     ]);
-    return template.replaceAll("__ENGINE_VERSION__", version);
+    return template.replaceAll("__ENGINE_VERSION__", hash);
 }
 
 export function serveStaticFiles(fastify: FastifyInstance) {
@@ -41,17 +49,19 @@ export function serveStaticFiles(fastify: FastifyInstance) {
     fastify.get("/", sendIndex);
     fastify.get("/index.html", sendIndex);
 
-    fastify.register(fastifyStatic, {
-        root: WEBSITE_DIR,
-        index: false,
-        cacheControl: true,
-        maxAge: "1y",
-        immutable: true,
+    // Explicit route rather than a static mount: in production dist/ is flat, so
+    // engine.js sits next to the server bundle (index.js) — a directory mount would
+    // expose the server code. The ?v=<hash> query lets us cache it immutably.
+    fastify.get("/engine.js", async (_request, reply) => {
+        const { content } = await getEngine();
+        return reply
+            .header("Cache-Control", "public, max-age=31536000, immutable")
+            .type("application/javascript; charset=utf-8")
+            .send(content);
     });
 
     fastify.register(fastifyStatic, {
         root: ASSETS_DIR,
         prefix: "/assets/",
-        decorateReply: false, // reply.sendFile is already decorated by the first registration
     });
 }
