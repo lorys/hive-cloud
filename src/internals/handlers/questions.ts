@@ -18,8 +18,8 @@ export const clientQuestionsHandlers = {
         
         allClients.forEach(client => client.send(broadcast));
         
-        // Wait ~1 sec before sending answer so clients have time to answer
-        await new Promise(res => setTimeout(res, 1000));
+        // Wait ~3 sec before sending answer so clients have time to answer
+        await new Promise(res => setTimeout(res, 3000));
         
         const answer = new Uint8Array(4);
         answer[0] = enums.client.questions.total_clients_having_chunk;

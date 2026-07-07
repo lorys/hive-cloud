@@ -16,7 +16,7 @@ export const tmpHiveInformations = {
     totalConnectedClients: 0
 };
 
-export async function retrieveAndBroadcastHiveInformations(fastify: FastifyInstance) {
+export async function broadcastHiveInformations(fastify: FastifyInstance) {
     hiveInformations.totalStorageCapacity = tmpHiveInformations.totalStorageCapacity;
     hiveInformations.totalUsedCapacity = tmpHiveInformations.totalUsedCapacity;
 

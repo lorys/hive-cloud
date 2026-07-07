@@ -31,7 +31,9 @@ export class HiveCommunication {
         if (this.#ws && this.#ws.readyState === WebSocket.OPEN) {
             return this.#ws;
         }
-        const ws = new WebSocket("ws://"+window.location.host+"/hive");
+        // Match the page's protocol
+        const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${scheme}//${window.location.host}/hive`);
         this.#ws = ws;
         ws.binaryType = "arraybuffer";
 
