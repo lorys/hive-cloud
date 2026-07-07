@@ -9,9 +9,10 @@ import { chunkIdToString } from "commons";
 type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void)[]; };
 
 type PendingDownload = {
-    totalChunks: number;
+    totalChunks: number; // 0 until known — headless downloads learn it from the first chunk
     chunks: (Uint8Array | undefined)[]; // index -> header + data
     received: number;
+    onInfo?: (totalChunks: number) => void; // fired once the first chunk reveals the count
     onChunk: (index: number) => void;
     resolve: (result: { bytes: Uint8Array<ArrayBuffer>; encrypted: boolean } | null) => void;
     timeout: ReturnType<typeof setTimeout>;
@@ -130,7 +131,7 @@ export class HiveCommunication {
             
             callback({ state: 'broadcasting', value: chunkIndex });
             this.#ws?.send(payload);
-            await new Promise(res => setTimeout(res, 1000));
+            await new Promise(res => setTimeout(res, 100));
         }
         
     }
@@ -147,15 +148,17 @@ export class HiveCommunication {
         this.#ws?.send(payload);
     }
 
-    waitForAnswer(type: number): Promise<Uint8Array> {
+    waitForAnswer(type: number, isWantedAnswer?: (payload: Uint8Array) => boolean): Promise<Uint8Array> {
         return new Promise((resolve, reject) => {
             const t = setTimeout(() => reject("Answer took too long"), 10_000);
             if (!this.#waitingForAnswer[type]) {
                 this.#waitingForAnswer[type] = [];
             }
-            this.#waitingForAnswer[type].push((...args) => {
-                resolve(...args);
-                clearTimeout(t);
+            this.#waitingForAnswer[type].push((arr) => {
+                if ((isWantedAnswer && isWantedAnswer(arr)) || !isWantedAnswer) {
+                    clearTimeout(t);
+                    resolve(arr);
+                }
             });
         });
     }
@@ -166,9 +169,19 @@ export class HiveCommunication {
 
         payload.set(stringToChunkId(chunkId), 1);
         this.#ws?.send(payload);
-        const answer = await this.waitForAnswer(payload[0]);
-        
-        return uint8ArrayToNumber(answer);
+        const answer = await this.waitForAnswer(payload[0], data => chunkIdToString(data.subarray(0,chunk_id_size)) === chunkId);
+        const totalHolders = uint8ArrayToNumber(answer.subarray(chunk_id_size));
+
+        return totalHolders;
+    }
+
+    // Asks the hive for one chunk: [ send_chunk | fileHash(32) | index(2) ].
+    #requestChunk(hash: Uint8Array, index: number) {
+        const payload = new Uint8Array(1 + chunk_id_size);
+        payload[0] = enums.client.actions.send_chunk;
+        payload.set(hash, 1);
+        payload.set(numberToUint8Array(index, 2), 1 + chunk_id_size - 2);
+        this.#ws?.send(payload);
     }
 
     // Requests every chunk of a file, collects the deliveries, and assembles the
@@ -195,13 +208,39 @@ export class HiveCommunication {
                 }, 30_000)
             });
 
-            const payload = new Uint8Array(1 + chunk_id_size);
-            payload[0] = enums.client.actions.send_chunk;
-            payload.set(hash, 1);
             for (let a = 0; a < totalChunks; a++) {
-                payload.set(numberToUint8Array(a, 2), 1 + chunk_id_size - 2);
-                this.#ws?.send(payload);
+                this.#requestChunk(hash, a);
             }
+        });
+    }
+
+    // Downloads a file we only know the first chunk id of (e.g. from a share link):
+    // we don't know totalChunks/encrypted yet, so we fetch chunk 0 first, read the
+    // count from its header, then request the rest. `onInfo` fires once the count is
+    // known (for the UI to lay out its grid); `onChunk` fires per delivered chunk.
+    headlessDownload(
+        firstChunkId: string,
+        onInfo: (totalChunks: number) => void,
+        onChunk: (index: number) => void
+    ): Promise<{ bytes: Uint8Array<ArrayBuffer>; encrypted: boolean } | null> {
+        const hash = stringToChunkId(firstChunkId).subarray(0, chunk_id_size - 2);
+        const key = chunkIdToString(hash);
+
+        return new Promise((resolve) => {
+            this.#downloads.set(key, {
+                totalChunks: 0, // unknown until the first chunk arrives
+                chunks: [],
+                received: 0,
+                onInfo,
+                onChunk,
+                resolve,
+                timeout: setTimeout(() => {
+                    this.#downloads.delete(key);
+                    resolve(null);
+                }, 30_000)
+            });
+
+            this.#requestChunk(hash, 0);
         });
     }
 
@@ -217,6 +256,17 @@ export class HiveCommunication {
         download.chunks[index] = payload.subarray(1 + chunk_id_size); // header + data
         download.received++;
         download.onChunk(index);
+
+        // Headless download: the first chunk reveals the real count. Learn it, tell
+        // the UI, then request the remaining chunks (the first one is already in).
+        if (download.totalChunks === 0) {
+            download.totalChunks = uint8ArrayToNumber(download.chunks[index]!.subarray(0, 2));
+            download.onInfo?.(download.totalChunks);
+            const hash = id.subarray(0, chunk_id_size - 2);
+            for (let a = 0; a < download.totalChunks; a++) {
+                if (a !== index) this.#requestChunk(hash, a);
+            }
+        }
 
         if (download.received < download.totalChunks) return;
 

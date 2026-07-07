@@ -19,6 +19,27 @@ export async function copyChunkId() {
     setTimeout(() => { button.innerHTML = label; }, 1500);
 }
 
+// Builds a shareable "?dl=" link for a file. The payload is unicode-safe base64 of
+// { id, name }; totalChunks is discovered on the recipient's side by headlessDownload,
+// so it isn't encoded here.
+export function shareLink(chunkId: string, name: string): string {
+    const payload = btoa(unescape(encodeURIComponent(JSON.stringify({ id: chunkId, name }))));
+    return `${location.origin}${location.pathname}?dl=${encodeURIComponent(payload)}`;
+}
+
+// Copies a file's share link to the clipboard, flashing feedback on `el`.
+export async function copyShareLink(chunkId: string, name: string, el: HTMLElement) {
+    const label = el.innerHTML;
+    try {
+        await navigator.clipboard.writeText(shareLink(chunkId, name));
+        el.innerHTML = "✅";
+    } catch (e) {
+        el.innerHTML = "❌";
+        console.log("Could not copy share link", e);
+    }
+    setTimeout(() => { el.innerHTML = label; }, 1500);
+}
+
 export async function handleFileUpload(file: File) {
     const modal = document.querySelector<HTMLElement>("#encryption");
     if (!modal) return;
@@ -62,10 +83,14 @@ export async function handleFileUpload(file: File) {
 
     const uploadStateModal = document.querySelector<HTMLButtonElement>("#upload_steps")!;
     const uploadStateText = document.querySelector<HTMLButtonElement>("#upload_steps #state")!;
+    const uploadBoxes = document.querySelector<HTMLElement>("#upload_boxes")!;
+    const uploadLink = document.querySelector<HTMLElement>("#upload_steps .chunk-id")!;
     const closeUploadSteps = document.querySelector<HTMLButtonElement>("#close_upload_steps")!;
     closeUploadSteps.onclick = () => {
         uploadStateModal.style.display = 'none';
     };
+    uploadBoxes.innerHTML = "";
+    uploadLink.textContent = "Preparing share link…";
     uploadStateModal.style.display = "block";
 
     const chunkInfos: {
@@ -81,11 +106,26 @@ export async function handleFileUpload(file: File) {
 
         if (state === 'splitting') {
             uploadStateText.innerHTML = `Splitting in ${payload.value} chunks`;
+            // One checkbox per chunk; each flips to ✅ once broadcast.
+            uploadBoxes.innerHTML = "";
+            for (let i = 0; i < payload.value; i++) {
+                const box = document.createElement("div");
+                box.classList.add("upload-box");
+                box.dataset.index = String(i);
+                uploadBoxes.append(box);
+            }
         } else if (state === 'broadcasting') {
             uploadStateText.innerHTML = `Broadcasting chunk n. ${payload.value}`;
+            const box = uploadBoxes.querySelector<HTMLElement>(`[data-index="${payload.value}"]`);
+            if (box) {
+                box.textContent = "✅";
+                box.classList.add("checked");
+            }
         } else if (state === 'firstChunkId') {
             chunkInfos.firstChunkId = payload.value.firstChunkId;
             chunkInfos.totalChunks = payload.value.totalChunks;
+            // The share link is ready as soon as we have the first chunk id.
+            uploadLink.textContent = shareLink(payload.value.firstChunkId, file.name);
         } else if (state === 'no_space') {
             uploadStateText.innerHTML = `Not enough space in the Hive ☹️ Try again later`
         }

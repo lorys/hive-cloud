@@ -2,6 +2,7 @@ import { chunkIdToString, numberToUint8Array, stringToChunkId } from "commons";
 import { chunk_id_size } from "hiveCodes";
 import { hive } from "../main";
 import { startDownload } from "./downloadFile.js";
+import { copyShareLink } from "../ui.js";
 
 type StoredFile = { name: string; totalChunks: number };
 
@@ -11,8 +12,24 @@ function holderElement(fileId: string): HTMLElement | null {
     return document.querySelector<HTMLElement>(`#user_files [data-holders="${fileId}"]`);
 }
 
+function chunksFoundElement(fileId: string): HTMLElement | null {
+    return document.querySelector<HTMLElement>(`#user_files [data-chunksfound="${fileId}"]`);
+}
+
 function actionButton(fileId: string): HTMLElement | null {
     return document.querySelector<HTMLElement>(`#user_files [data-action="${fileId}"]`);
+}
+
+// Healthy file: shows how many times it's fully stored and offers a download.
+function updateChunksFound(fileId: string, chunksFound: number, total: number) {
+    const el = chunksFoundElement(fileId);
+    if (el) el.innerHTML = `${chunksFound}/${total} 📦`;
+
+    const button = actionButton(fileId);
+    if (button) {
+        button.innerHTML = `⬇️ Download`;
+        button.onclick = () => startDownload(fileId, usersChunkIds[fileId].name, usersChunkIds[fileId].totalChunks);
+    }
 }
 
 // Healthy file: shows how many times it's fully stored and offers a download.
@@ -64,17 +81,32 @@ function renderUserFiles() {
         const el = document.createElement('div');
         const nameEl = document.createElement('span');
         const holdersEl = document.createElement('span');
+        const chunksFoundEl = document.createElement('span');
+        const actionsEl = document.createElement('div');
         const buttonEl = document.createElement('span');
+        const shareEl = document.createElement('span');
 
+        nameEl.classList.add('name');
         nameEl.innerHTML = usersChunkIds[chunk]?.name || chunk;
+        holdersEl.classList.add('holders');
         holdersEl.innerHTML = `searching for 🐝...`;
         holdersEl.dataset.holders = chunk;
+        chunksFoundEl.classList.add('holders');
+        chunksFoundEl.innerHTML = `0/${usersChunkIds[chunk]?.totalChunks} 📦`;
+        chunksFoundEl.dataset.chunksfound = chunk;
+        buttonEl.classList.add('download');
         buttonEl.innerHTML = `⬇️ Download`;
         buttonEl.dataset.action = chunk;
         buttonEl.onclick = () => startDownload(chunk, usersChunkIds[chunk]?.name, usersChunkIds[chunk]?.totalChunks);
+        shareEl.classList.add('share');
+        shareEl.innerHTML = `🔗`;
+        shareEl.dataset.share = chunk;
+        shareEl.onclick = () => copyShareLink(chunk, usersChunkIds[chunk]?.name, shareEl);
 
+        actionsEl.classList.add('actions');
+        actionsEl.append(buttonEl, shareEl);
         el.classList.add('link');
-        el.append(nameEl, holdersEl, buttonEl);
+        el.append(nameEl, holdersEl, chunksFoundEl, actionsEl);
 
         newRender.push(el);
     });
@@ -109,21 +141,33 @@ async function checkFileHolders(chunkId: string) {
     let minHolders = Infinity;
     
     for (let index = 0; index < totalChunks; index++) {
-        let holders: number;
-        try {
-            const wantedChunkId = new Uint8Array(chunk_id_size);
-            wantedChunkId.set(stringToChunkId(chunkId), 0);
-            wantedChunkId.set(numberToUint8Array(index, 2), chunk_id_size - 2);
+        await new Promise(res => setTimeout(res, 10));
+        let holders: number | undefined;
 
-            holders = await communication.isChunkPresentInHive(chunkIdToString(wantedChunkId));
-        } catch (e) {
-            // Network hiccup or timeout: don't touch the file, we'll retry next tick.
-            console.log("Could not check holders for", chunkId, "chunk", index, e);
+        const tryCheckPresence = async (retries: number) => {
+            try {
+                const wantedChunkId = new Uint8Array(chunk_id_size);
+                wantedChunkId.set(stringToChunkId(chunkId), 0);
+                wantedChunkId.set(numberToUint8Array(index, 2), chunk_id_size - 2);
+                holders = await communication.isChunkPresentInHive(chunkIdToString(wantedChunkId));
+
+                return holders;
+            } catch (e) {
+                if (retries < 10) return tryCheckPresence(retries + 1);
+                return undefined;
+            }
+        };
+
+        holders = await tryCheckPresence(0);
+
+        // Network hiccup or timeout: don't touch the file, we'll retry next tick.
+        if (holders === undefined) {
             return;
         }
 
         minHolders = Math.min(minHolders, holders);
         if (holders === 0) break; // one missing chunk is enough to lose the file
+        updateChunksFound(chunkId, index+1, totalChunks);
     }
 
     if (minHolders === 0) {

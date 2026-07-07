@@ -32,9 +32,9 @@ export async function questionsFromServerHandler(payload: Uint8Array, hive: Hive
             const chunkId = chunkIdToString(args);
             try {
                 await hive.pullChunk(chunkId); // throws if we don't hold it
-                return args; // echo the id back so the server registers us as a holder
+                return args;
             } catch (e) {
-                console.error("Error", e);
+                
             }
             return null;
         },

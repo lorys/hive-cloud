@@ -5,6 +5,7 @@ import { byId } from "./utils.js";
 import { chunk_size } from "hiveCodes";
 import { checkUserFiles, manageUserFiles } from "./handlers/manageUsersFiles.js";
 import { chunkRedundancy } from "./chunksRedundancy.js";
+import { startHeadlessDownload } from "./handlers/downloadFile.js";
 
 export interface HiveState {
     communication: HiveCommunication | null;
@@ -97,6 +98,17 @@ const start = async () => {
         }
         redundancyCheckRunning = false;
     }, 500);
+
+    // Arrived via a share link? Now that the hive is connected, start the download.
+    const dl = new URLSearchParams(location.search).get("dl");
+    if (dl) {
+        try {
+            const { id, name } = JSON.parse(decodeURIComponent(escape(atob(dl))));
+            startHeadlessDownload(id, name);
+        } catch (e) {
+            console.log("Invalid download link", e);
+        }
+    }
 }
 
 byId("agreed").onclick = start;
