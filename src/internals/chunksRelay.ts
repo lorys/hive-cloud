@@ -1,5 +1,5 @@
 import { chunkIdToString } from "commons";
-import { chunk_header_size, chunk_id_size, chunk_size, chunk_state_treshold } from "hiveCodes";
+import { chunk_id_size, chunk_state_treshold } from "hiveCodes";
 
 const chunksReceived: {
     [key: string]: {
@@ -48,13 +48,7 @@ export function relayReceivedChunk(chunk: Uint8Array) {
         entry.reference = strippedChunk;
         entry.agree = 1;
     } else {
-        let isDifferent = false;
-        for (let a = 0; a < chunk_header_size + chunk_size; a++) {
-            if (entry.reference[a] !== strippedChunk[a]) {
-                isDifferent = true;
-                break;
-            }
-        }
+        const isDifferent = Buffer.compare(entry.reference, strippedChunk) !== 0;
 
         if (isDifferent) {
             entry.disagree++;
