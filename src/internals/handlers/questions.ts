@@ -1,5 +1,5 @@
 import { WebSocket } from '@fastify/websocket';
-import { categories, chunk_id_size, chunk_redundancy, enums } from 'hiveCodes';
+import { categories, chunk_id_size, enums } from 'hiveCodes';
 import { numberToUint8Array } from '../bitwise';
 import { chunkIdToString } from 'commons';
 
@@ -26,8 +26,10 @@ export const clientQuestionsHandlers = {
         
         let totalHolders = [...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length;
         if (!totalHolders) {
-            // Wait ~3s before sending answer so clients have time to answer
+            // Wait ~3s before sending answer so clients have time to answer, then
+            // recount: the have_chunk answers land during this window.
             await new Promise(res => setTimeout(res, 3000));
+            totalHolders = [...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length;
         }
 
         const answer = new Uint8Array(1 + chunk_id_size + 3);

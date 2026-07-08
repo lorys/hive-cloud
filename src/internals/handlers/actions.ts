@@ -42,24 +42,28 @@ export const clientActionsHandlers = {
             delete validatedChunks[wantedChunkIdStr];
         }, 20_000);
 
-        let holders = 0;
 
-        for (const client of allClients) {
-            if (client.readyState !== OPEN || !client.hive.hasChunks?.has(wantedChunkIdStr)) continue;
-
-            client.send(askClientPayload);
-            holders++;
-            await new Promise(res => setTimeout(res, 50));
-        }
+        // The downloader itself is in allClients and never holds the chunk it asks
+        // for, so we skip non-holders instead of bailing out on the first one.
+        const holders = [...allClients].filter(
+            (client) => client.readyState === OPEN && client.hive.hasChunks?.has(wantedChunkIdStr)
+        );
 
         // Nobody holds it: don't wait for an answer that will never come.
-        if (holders === 0) {
+        if (holders.length === 0) {
             clearTimeout(waitChunkDeadline);
             delete validatedChunks[wantedChunkIdStr];
             return;
         }
 
-        expectChunk(wantedChunkIdStr, holders);
+        // Register the relay before asking: a holder can answer during the delays
+        // below, and relayReceivedChunk drops any chunk it isn't expecting yet.
+        expectChunk(wantedChunkIdStr, holders.length);
+
+        for (const client of holders) {
+            client.send(askClientPayload);
+            await new Promise(res => setTimeout(res, 50));
+        }
 
         const wantedChunk: Uint8Array | false = await new Promise(async res => {
             while (validatedChunks[wantedChunkIdStr] === false) {
