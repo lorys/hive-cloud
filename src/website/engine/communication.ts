@@ -107,28 +107,20 @@ export class HiveCommunication {
             }
         });
 
+        const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
+        payload[0] = enums.client.actions.broadcast_chunk;
+        payload.set(chunkId, 1);
+        payload.set(numberToUint8Array(chunks.length, 2), 1 + chunk_id_size);
+        payload.set(numberToUint8Array(file.size, 5), 1 + chunk_id_size + 2);
+        payload[1 + chunk_id_size + 7] = encrypted ? 1 : 0;
+        const dataOffset = 1 + chunk_infos_size;
+
         for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-            const payload = new Uint8Array(1 + chunk_infos_size + chunk_size);
-            payload[0] = enums.client.actions.broadcast_chunk;
-            
-            chunkId.set(numberToUint8Array(chunkIndex, 2), chunk_id_size - 2);
+            payload.set(numberToUint8Array(chunkIndex, 2), 1 + chunk_id_size - 2);
+            // Zero the tail left from the previous chunk before writing a shorter one.
+            if (chunks[chunkIndex].length < chunk_size) payload.fill(0, dataOffset + chunks[chunkIndex].length);
+            payload.set(chunks[chunkIndex], dataOffset);
 
-            let cursor = 1;
-            
-            payload.set(chunkId, cursor);
-            cursor += chunk_id_size;
-            
-            payload.set(numberToUint8Array(chunks.length, 2), cursor);
-            cursor += 2;
-            
-            payload.set(numberToUint8Array(file.size, 5), cursor);
-            cursor += 5;
-
-            payload[cursor] = encrypted ? 1 : 0;
-            cursor += 1;
-
-            payload.set(chunks[chunkIndex], cursor);
-            
             callback({ state: 'broadcasting', value: chunkIndex });
             this.#ws?.send(payload);
             await new Promise(res => setTimeout(res, 100));

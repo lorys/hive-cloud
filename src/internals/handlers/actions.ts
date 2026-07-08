@@ -14,9 +14,7 @@ export const clientActionsHandlers = {
     async [enums.client.actions.broadcast_chunk](buffer: Uint8Array, _wsClient: WebSocket, allClients: Set<WebSocket>) {
         let askedTo = 0;
 
-        const payload = new Uint8Array(buffer.byteLength);
-        payload[0] = enums.server.actions.store_chunk;
-        payload.set(buffer.subarray(1), 1);
+        buffer[0] = enums.server.actions.store_chunk;
         
         for (const client of allClients) {
             if (askedTo > chunk_start_redundancy) return;
@@ -24,7 +22,7 @@ export const clientActionsHandlers = {
             const clientHasCapacity = ((client.hive.totalStorage || 0) - (client.hive.usedStorage || 0)) > 0;
             if (!clientHasCapacity) continue;
 
-            client.send(payload);
+            client.send(buffer);
             askedTo++;
             await new Promise(res => setTimeout(res, 50));
         }
@@ -43,6 +41,7 @@ export const clientActionsHandlers = {
         const waitChunkDeadline = setTimeout(() => {
             delete validatedChunks[wantedChunkIdStr];
         }, 20_000);
+
 
         // The downloader itself is in allClients and never holds the chunk it asks
         // for, so we skip non-holders instead of bailing out on the first one.
