@@ -13,10 +13,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
             node-version: '22'
+            cache: 'yarn'
 
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
+      - run: yarn build
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
       - run: flyctl deploy --remote-only
