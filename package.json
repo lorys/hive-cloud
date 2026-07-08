@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -k -n build,server \"node build.mjs --watch\" \"node --watch --env-file-if-exists=.env.local dist/index.js\"",
-    "build": "node --env-file-if-exists=.env.production build.mjs && cp src/website/index.html dist/index.html && cp -r assets/ dist/assets",
+    "build": "node build.mjs && cp src/website/index.html dist/index.html && cp -r assets/ dist/assets",
     "typecheck": "npm run typecheck:server && npm run typecheck:client",
     "typecheck:server": "tsc -p tsconfig.json --noEmit",
     "typecheck:client": "tsc -p src/website/engine/tsconfig.json",
     "check": "npm run typecheck && npm run build",
-    "start": "cd dist && node --env-file-if-exists=../.env.production index.js",
+    "start": "cd dist && node index.js",
     "deploy": "npm run build && fly deploy",
     "test": "vitest"
   },

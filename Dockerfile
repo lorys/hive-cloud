@@ -13,7 +13,6 @@ RUN yarn install --production --frozen-lockfile && yarn cache clean
 
 # The built application + its production env file.
 COPY dist ./dist
-COPY .env.production ./
 
 ENV NODE_ENV=production
 EXPOSE 8080
