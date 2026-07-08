@@ -35,10 +35,16 @@ export class HiveCommunication {
         // Match the page's protocol
         const scheme = window.location.protocol === "https:" ? "wss:" : "ws:";
         const ws = new WebSocket(`${scheme}//${window.location.host}/hive`);
-        this.#ws = ws;
+        this.#ws = ws; 
         ws.binaryType = "arraybuffer";
 
-        ws.onmessage = async (event: MessageEvent) => {
+        ws.onclose = async () => {
+            // Reconnect in 3s
+            await new Promise(res => setTimeout(res, 3000));
+            this.connect();
+        }
+
+        ws.onmessage = async (event: MessageEvent) => { 
             const payload = new Uint8Array(event.data);
             
             await questionsFromServerHandler(payload, this);
