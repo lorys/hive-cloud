@@ -20,22 +20,17 @@ export const clientQuestionsHandlers = {
         for (const client of allClients) {
             if (!client.hive.hasChunks?.has(chunkId)) {
                 client.send(broadcast);
-                await new Promise(res => setTimeout(res, 50));
             }
         }
         
-        let totalHolders = [...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length;
-        if (!totalHolders) {
-            // Wait ~3s before sending answer so clients have time to answer, then
-            // recount: the have_chunk answers land during this window.
-            await new Promise(res => setTimeout(res, 3000));
-            totalHolders = [...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length;
-        }
+        const totalHolders = [...allClients].filter(client => client?.hive?.hasChunks?.has(chunkId)).length;
+        
+        // We don't wait for an answer. Since this is part of a repeated query, the server will always have ~almost~ live informations.
 
         const answer = new Uint8Array(1 + chunk_id_size + 3);
         answer[0] = enums.client.questions.total_clients_having_chunk;
         answer.set(buffer.subarray(1), 1);
-        answer.set(numberToUint8Array(totalHolders, 1 + chunk_id_size));
+        answer.set(numberToUint8Array(totalHolders, 3), 1 + chunk_id_size);
 
         wsClient.send(answer);
     }
