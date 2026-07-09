@@ -139,10 +139,12 @@ async function checkFileHolders(chunkId: string) {
 
     const totalChunks = usersChunkIds[chunkId]?.totalChunks;
     let minHolders = Infinity;
+    let chunksFound = 0;
     
-    for (let index = 0; index < totalChunks; index++) {
-        await new Promise(res => setTimeout(res, 10));
+    await Promise.allSettled(new Array(totalChunks).fill(0).map(async (_, index) => {
         let holders: number | undefined;
+
+        if (minHolders === 0) return;
 
         const tryCheckPresence = async (retries: number) => {
             try {
@@ -150,6 +152,7 @@ async function checkFileHolders(chunkId: string) {
                 wantedChunkId.set(stringToChunkId(chunkId), 0);
                 wantedChunkId.set(numberToUint8Array(index, 2), chunk_id_size - 2);
                 holders = await communication.isChunkPresentInHive(chunkIdToString(wantedChunkId));
+                if (minHolders === 0) return 0;
 
                 return holders;
             } catch (e) {
@@ -166,9 +169,12 @@ async function checkFileHolders(chunkId: string) {
         }
 
         minHolders = Math.min(minHolders, holders);
-        if (holders === 0) break; // one missing chunk is enough to lose the file
-        updateChunksFound(chunkId, index+1, totalChunks);
-    }
+        if (holders === 0) minHolders = 0; // one missing chunk is enough to lose the file
+        else {
+            chunksFound++;
+            updateChunksFound(chunkId, chunksFound, totalChunks);
+        }
+    }));
 
     if (minHolders === 0) {
         markFileLost(chunkId);

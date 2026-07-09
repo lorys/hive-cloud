@@ -6,7 +6,7 @@ import { numberToUint8Array, stringToChunkId, uint8ArrayToNumber } from "commons
 import { actionsFromServerHandler } from "./handlers/actions.js";
 import { chunkIdToString } from "commons";
 
-type PendingAnswer = { [key: string]: ((payload: Uint8Array) => void)[]; };
+type PendingAnswer = { [key: string]: (((payload: Uint8Array) => boolean) | true)[]; }; // an pending answer set to true means it has been answered.
 
 type PendingDownload = {
     totalChunks: number; // 0 until known — headless downloads learn it from the first chunk
@@ -56,10 +56,13 @@ export class HiveCommunication {
             }
 
             if (this.#waitingForAnswer[payload[0]]) {
-                await Promise.allSettled(this.#waitingForAnswer[payload[0]].map(fn => fn?.(payload.subarray(1))));
-
-                // reset waitingForAnswer
-                delete this.#waitingForAnswer[payload[0]];
+                for (let index = 0, len = this.#waitingForAnswer[payload[0]].length; index < len; index++) {
+                    const cb = this.#waitingForAnswer[payload[0]][index];
+                    if (typeof cb === 'function' && cb(payload.subarray(1))) {
+                        this.#waitingForAnswer[payload[0]][index] = true;
+                    }
+                }
+                this.#waitingForAnswer[payload[0]] = this.#waitingForAnswer[payload[0]].filter(a => a !== true);
             }
         };
 
@@ -148,16 +151,24 @@ export class HiveCommunication {
 
     waitForAnswer(type: number, isWantedAnswer?: (payload: Uint8Array) => boolean): Promise<Uint8Array> {
         return new Promise((resolve, reject) => {
-            const t = setTimeout(() => reject("Answer took too long"), 10_000);
             if (!this.#waitingForAnswer[type]) {
                 this.#waitingForAnswer[type] = [];
             }
+
             this.#waitingForAnswer[type].push((arr) => {
                 if ((isWantedAnswer && isWantedAnswer(arr)) || !isWantedAnswer) {
                     clearTimeout(t);
                     resolve(arr);
+                    return true;
                 }
+                return false;
             });
+
+            const t = setTimeout(() => {
+                delete this.#waitingForAnswer[type][this.#waitingForAnswer[type].length];
+                reject("Answer took too long");
+            }, 10_000);
+
         });
     }
 

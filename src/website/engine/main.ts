@@ -84,7 +84,7 @@ const start = async () => {
             console.log("Manage user file error", err);
         }
         checkingUsersFiles = false;
-    }, 750);
+    }, 3_000);
 
     let redundancyCheckRunning = false;
 
